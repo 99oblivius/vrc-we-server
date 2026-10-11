@@ -1,0 +1,45 @@
+services:
+  relay:
+    # Pin a release tag (e.g. 99oblivius/vrc-we-server:2026.1) to update deliberately.
+    image: 99oblivius/vrc-we-server:latest
+    restart: unless-stopped
+    ports:
+      - "443:8443"
+    environment:
+      # Required: the EULA version you accept (EULA.md). The relay refuses to start without it.
+      VRC_WE_ACCEPT_EULA: ${VRC_WE_ACCEPT_EULA:-}
+      # In-process TLS via Let's Encrypt: set both. Leave both empty for plain HTTP
+      # behind your own reverse proxy.
+      VRC_WE_TLS_DOMAINS: ${VRC_WE_TLS_DOMAINS:-}
+      VRC_WE_TLS_EMAIL: ${VRC_WE_TLS_EMAIL:-}
+      # Staging certificates until issuance works; set 1 for production certificates.
+      VRC_WE_TLS_PROD: ${VRC_WE_TLS_PROD:-0}
+      RUST_LOG: ${RUST_LOG:-info}
+      # Behind your own reverse proxies only: their addresses and CIDR ranges (see README).
+      # VRC_WE_RELAY_TRUSTED_PROXIES: "10.0.0.2"
+      # Abuse limits, defaults shown:
+      # VRC_WE_RELAY_MAX_BYTES_PER_SEC: "10000000"   # sustained inbound bytes/s per client address
+      # VRC_WE_RELAY_MAX_BURST_BYTES: "20000000"     # token-bucket burst depth
+      # VRC_WE_RELAY_CONN_RATE_PER_IP: "20"          # conns/s per address across the window below
+      # VRC_WE_RELAY_CONN_WINDOW_SECS: "5"           # measurement window
+      # VRC_WE_RELAY_CONN_THROTTLE_SECS: "60"        # penalty duration once tripped
+      # VRC_WE_RELAY_CONN_THROTTLE_RATE: "1"         # conns/s allowed while throttled
+      # VRC_WE_RELAY_MAX_IP_ENTRIES: "100000"        # per-address state table cap
+    volumes:
+      - acme-cache:/var/lib/vrc-we/acme
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  acme-cache:

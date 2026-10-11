@@ -1,0 +1,36 @@
+[package]
+name = "server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "vrc-we-server"
+path = "src/main.rs"
+
+[dependencies]
+relay-wire = { workspace = true }
+
+axum = { workspace = true, features = ["ws"] }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+serde_json = { workspace = true }
+futures-util = { workspace = true }
+ipnet = "2"
+parking_lot = { workspace = true }
+rustls-acme = { version = "0.15", default-features = false, features = ["aws-lc-rs", "tls12", "webpki-roots", "axum", "tokio"] }
+axum-server = "0.8"
+
+[build-dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[dev-dependencies]
+tokio-tungstenite = "0.29"
+futures = "0.3"
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
