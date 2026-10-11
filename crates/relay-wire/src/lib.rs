@@ -93,6 +93,8 @@ pub const MAX_PAYLOAD_BYTES: usize = 65_535;
 /// its user accepted; the relay starts only when `VRC_WE_ACCEPT_EULA` names
 /// this one.
 pub const EULA_VERSION: &str = "2026-10";
+/// The text of EULA version `EULA_VERSION`, shown by the client.
+pub const EULA: &str = include_str!("../../../EULA.md");
 
 pub mod transport {
     pub const KEEPALIVE_INTERVAL_SECS: u64 = 30;
@@ -178,5 +180,15 @@ pub mod version {
             assert_eq!(r(5, 5).check(r(5, 5)), Ok(()));
             assert_eq!(r(5, 4).check(r(4, 4)), Ok(()));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_eula_text_is_the_required_version() {
+        assert!(EULA.contains(&format!("**Version {EULA_VERSION}**")));
     }
 }

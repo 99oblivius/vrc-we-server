@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock EULA.md ./
 COPY crates ./crates
 ARG APP_VERSION
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
