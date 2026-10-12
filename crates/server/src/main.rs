@@ -124,7 +124,10 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
                     return Err(e.into());
                 }
             };
-            tracing::info!(%addr, "vrc-we-server listening (plain HTTP — dev)");
+            tracing::info!(
+                %addr,
+                "vrc-we-server listening on plain HTTP: serve it behind a TLS-terminating proxy"
+            );
             // tokio-tungstenite sets TCP_NODELAY on client connects only;
             // server-accepted sockets keep Nagle, which stalls the small
             // 20 Hz wire frames behind a 40 ms delayed-ack window. axum-server

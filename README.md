@@ -20,20 +20,64 @@ The client's [EULA](EULA.md) tells its users that every relay they use sees this
 
 ## Quick start
 
-```bash
-curl -O https://raw.githubusercontent.com/99oblivius/vrc-we-server/main/compose.yml
-export VRC_WE_ACCEPT_EULA=2026-10           # the EULA version you accept
-export VRC_WE_TLS_DOMAINS=relay.example.com # a DNS name pointing at this host
-export VRC_WE_TLS_EMAIL=you@example.com     # the Let's Encrypt account contact
-docker compose up -d
+The relay runs from the `99oblivius/vrc-we-server` image. Pick a DNS name that points at the host and keep port 443 free: the relay obtains its certificate in-process through Let's Encrypt. Both forms below set up the same container, and `podman` and `podman compose` take them unchanged.
+
+### Compose
+
+Save this as `compose.yml` and run `docker compose up -d`:
+
+```yaml
+services:
+  relay:
+    image: 99oblivius/vrc-we-server:latest     # or pin a release, e.g. :2026.1
+    restart: unless-stopped
+    ports:
+      - "443:8443"
+    environment:
+      VRC_WE_ACCEPT_EULA: "2026-10"            # the EULA version you accept
+      VRC_WE_TLS_DOMAINS: "relay.example.com"  # a DNS name pointing at this host
+      VRC_WE_TLS_EMAIL: "you@example.com"      # the Let's Encrypt account contact
+      VRC_WE_TLS_PROD: "0"                     # 1 once a staging certificate was issued
+    volumes:
+      - acme-cache:/var/lib/vrc-we/acme
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  acme-cache:
 ```
 
-The relay obtains a certificate in-process through Let's Encrypt, on port 443. It starts on Let's Encrypt's **staging** directory, whose certificates clients do not trust. Once `docker compose logs` shows a certificate issued, switch to production:
+The repository's [`compose.yml`](compose.yml) is the same file with every setting annotated, reading its values from the environment.
+
+### docker run
 
 ```bash
-export VRC_WE_TLS_PROD=1
-docker compose up -d
+docker run -d --name vrc-we-server --restart unless-stopped \
+  -p 443:8443 \
+  -e VRC_WE_ACCEPT_EULA=2026-10 \
+  -e VRC_WE_TLS_DOMAINS=relay.example.com \
+  -e VRC_WE_TLS_EMAIL=you@example.com \
+  -e VRC_WE_TLS_PROD=0 \
+  -v vrc-we-acme:/var/lib/vrc-we/acme \
+  --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
+  --memory 256m --log-opt max-size=10m --log-opt max-file=3 \
+  99oblivius/vrc-we-server:latest
 ```
+
+### Production certificates
+
+The relay starts on Let's Encrypt's **staging** directory, whose certificates clients do not trust. Once the logs (`docker compose logs`, or `docker logs vrc-we-server`) show a certificate issued, set `VRC_WE_TLS_PROD` to `1` and recreate the container: `docker compose up -d`, or `docker rm -f vrc-we-server` and the same `docker run` with `-e VRC_WE_TLS_PROD=1`.
 
 Clients then connect to `relay.example.com`.
 
@@ -45,7 +89,7 @@ Port 443 reaches the relay, which terminates TLS itself, as in the quick start. 
 
 ### Behind your own reverse proxy
 
-Leave the TLS variables empty; the relay serves plain HTTP on port 8443 and the proxy terminates TLS. The proxy must:
+Leave the TLS variables empty; the relay serves plain HTTP on port 8443 and the proxy terminates TLS. Publish the port only where the proxy reaches it, for example `127.0.0.1:8443:8443` in `ports` (`-p 127.0.0.1:8443:8443`). The proxy must:
 
 - forward WebSocket upgrades on `/ws`;
 - allow idle connections of at least 60 s (keep-alive pings run every 30 s);
