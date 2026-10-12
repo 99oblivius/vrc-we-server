@@ -75,9 +75,9 @@ docker run -d --name vrc-we-server --restart unless-stopped \
 
 ### First start
 
-The relay loads its certificate from the volume, or orders one from Let's Encrypt, which reaches it on port 443. Until the certificate is ready, clients cannot connect. The logs (`docker compose logs`, or `docker logs vrc-we-server`) report each step and say when clients can connect, and the container turns healthy at the same moment. The certificate is renewed in place.
+The relay loads its certificate from the volume, or orders one from Let's Encrypt, which reaches it on port 443. Until the certificate is ready, clients cannot connect. The logs (`docker compose logs`, or `docker logs vrc-we-server`) report each step and say when clients can connect, and the container turns healthy at the same moment. The certificate is renewed in place, starting 30 days before it expires, which again needs port 443.
 
-If an order fails, the log quotes Let's Encrypt's reason, for example a timeout when port 443 does not reach the host, and the relay waits 12 minutes before the next attempt: Let's Encrypt blocks a name for an hour after five failures. Fix the setup and restart the relay to retry at once.
+If an order fails, the log quotes Let's Encrypt's reason, for example a timeout when port 443 does not reach the host. The relay retries after 12 minutes, twice, then after an hour, then every 6 hours until it succeeds; Let's Encrypt blocks a name for an hour after five failures. Fix the setup and restart the relay to retry at once. A failed renewal keeps the current certificate in use.
 
 Clients then connect to `relay.example.com`.
 

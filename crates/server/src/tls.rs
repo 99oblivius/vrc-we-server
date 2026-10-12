@@ -76,14 +76,17 @@ impl AcmeSettings {
         tokio::spawn(async move {
             use futures_util::StreamExt;
             let mut ready = false;
+            let mut retries = OrderRetries::default();
             while let Some(event) = state.next().await {
                 let err = match event {
                     Ok(ok) => {
                         if let Some(line) = cert_progress(&ok, ready) {
                             tracing::info!("certificate: {line}");
                         }
-                        ready |=
-                            matches!(ok, EventOk::DeployedCachedCert | EventOk::DeployedNewCert);
+                        if matches!(ok, EventOk::DeployedCachedCert | EventOk::DeployedNewCert) {
+                            ready = true;
+                            retries.succeeded();
+                        }
                         continue;
                     }
                     Err(err) => err,
@@ -95,7 +98,7 @@ impl AcmeSettings {
                     EventError::Order(_) => Failure::Order,
                     _ => Failure::Other,
                 };
-                let (tail, pause) = on_failure(failure, ready);
+                let (tail, pause) = on_failure(failure, ready, &mut retries);
                 if ready || failure == Failure::CacheStore {
                     tracing::warn!("certificate: {err}; {tail}");
                 } else {
@@ -194,10 +197,44 @@ impl rustls::client::danger::ServerCertVerifier for AnyCertificate {
     }
 }
 
-/// The pause after a failed order. Let's Encrypt refuses a hostname for an
-/// hour after five failed authorizations, and its library retries within
-/// seconds; one order per 12 minutes never reaches that limit.
-const ORDER_RETRY_GAP: Duration = Duration::from_secs(12 * 60);
+/// Pauses after consecutive failed orders: two quick retries while a host
+/// fixes the setup, then hourly, then every six hours until an order
+/// succeeds. Each is at least 12 minutes, which keeps under Let's Encrypt's
+/// five failed authorizations per name and hour.
+const ORDER_RETRY_GAPS: [Duration; 4] = [
+    Duration::from_secs(12 * 60),
+    Duration::from_secs(12 * 60),
+    Duration::from_secs(60 * 60),
+    Duration::from_secs(6 * 60 * 60),
+];
+
+/// Consecutive failed orders; a deployed certificate resets the count.
+#[derive(Debug, Default)]
+struct OrderRetries {
+    failed: usize,
+}
+
+impl OrderRetries {
+    /// Records a failed order and returns the pause before the next.
+    fn failed(&mut self) -> Duration {
+        self.failed += 1;
+        ORDER_RETRY_GAPS[(self.failed - 1).min(ORDER_RETRY_GAPS.len() - 1)]
+    }
+
+    fn succeeded(&mut self) {
+        self.failed = 0;
+    }
+}
+
+/// `12 min`, `1 h`, `6 h`.
+fn span(d: Duration) -> String {
+    let minutes = d.as_secs() / 60;
+    if minutes % 60 == 0 {
+        format!("{} h", minutes / 60)
+    } else {
+        format!("{minutes} min")
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Failure {
@@ -209,16 +246,35 @@ enum Failure {
 /// How the relay answers a failed certificate step, given whether a
 /// certificate was already deployed: the log line's tail, and the pause
 /// before the next order. A restart retries at once.
-fn on_failure(failure: Failure, ready: bool) -> (&'static str, Option<Duration>) {
+fn on_failure(
+    failure: Failure,
+    ready: bool,
+    retries: &mut OrderRetries,
+) -> (String, Option<Duration>) {
     match (failure, ready) {
-        (Failure::CacheStore, _) => ("not kept, the next start orders again", None),
-        (Failure::Order, false) => (
-            "clients cannot connect yet; next attempt in 12 min, or fix the setup and restart to retry now",
-            Some(ORDER_RETRY_GAP),
-        ),
-        (Failure::Order, true) => ("renewal retried in 12 min", Some(ORDER_RETRY_GAP)),
-        (Failure::Other, false) => ("retrying, clients cannot connect yet", None),
-        (Failure::Other, true) => ("retrying", None),
+        (Failure::CacheStore, _) => ("not kept, the next start orders again".into(), None),
+        (Failure::Order, false) => {
+            let gap = retries.failed();
+            (
+                format!(
+                    "clients cannot connect yet; next attempt in {}, or fix the setup and restart to retry now",
+                    span(gap)
+                ),
+                Some(gap),
+            )
+        }
+        (Failure::Order, true) => {
+            let gap = retries.failed();
+            (
+                format!(
+                    "the current certificate stays in use; renewal retried in {}",
+                    span(gap)
+                ),
+                Some(gap),
+            )
+        }
+        (Failure::Other, false) => ("retrying, clients cannot connect yet".into(), None),
+        (Failure::Other, true) => ("retrying".into(), None),
     }
 }
 
@@ -426,18 +482,47 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_order_pauses_long_enough_to_stay_under_the_failure_limit() {
-        for ready in [false, true] {
-            let (_, pause) = on_failure(Failure::Order, ready);
-            let pause = pause.expect("a failed order pauses");
-            assert!(pause * 5 >= Duration::from_secs(3600), "{pause:?}");
+    fn failed_orders_retry_twice_after_12_min_then_hourly_then_every_6_h() {
+        let mut retries = OrderRetries::default();
+        let tails: Vec<(String, Option<Duration>)> = (0..6)
+            .map(|_| on_failure(Failure::Order, false, &mut retries))
+            .collect();
+        let pauses: Vec<u64> = tails
+            .iter()
+            .map(|(_, p)| p.unwrap().as_secs() / 60)
+            .collect();
+        assert_eq!(pauses, [12, 12, 60, 360, 360, 360]);
+        assert!(tails[0].0.contains("next attempt in 12 min"));
+        assert!(tails[2].0.contains("next attempt in 1 h"));
+        assert!(tails[3].0.contains("next attempt in 6 h"));
+        for gap in ORDER_RETRY_GAPS {
+            assert!(
+                gap * 5 >= Duration::from_secs(3600),
+                "{gap:?} under the failure limit"
+            );
         }
+    }
+
+    #[test]
+    fn a_deployed_certificate_restarts_the_schedule() {
+        let mut retries = OrderRetries::default();
+        for _ in 0..4 {
+            retries.failed();
+        }
+        retries.succeeded();
+        let (tail, pause) = on_failure(Failure::Order, true, &mut retries);
+        assert_eq!(pause, Some(Duration::from_secs(12 * 60)));
         assert_eq!(
-            ORDER_RETRY_GAP,
-            Duration::from_secs(12 * 60),
-            "the log says 12 min"
+            tail,
+            "the current certificate stays in use; renewal retried in 12 min"
         );
-        assert_eq!(on_failure(Failure::CacheStore, false).1, None);
-        assert_eq!(on_failure(Failure::Other, true).1, None);
+    }
+
+    #[test]
+    fn only_failed_orders_pause() {
+        let mut retries = OrderRetries::default();
+        assert_eq!(on_failure(Failure::CacheStore, false, &mut retries).1, None);
+        assert_eq!(on_failure(Failure::Other, true, &mut retries).1, None);
+        assert_eq!(retries.failed, 0);
     }
 }
