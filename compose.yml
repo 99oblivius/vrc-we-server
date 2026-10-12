@@ -12,8 +12,6 @@ services:
       # behind your own reverse proxy.
       VRC_WE_TLS_DOMAINS: ${VRC_WE_TLS_DOMAINS:-}
       VRC_WE_TLS_EMAIL: ${VRC_WE_TLS_EMAIL:-}
-      # Staging certificates until issuance works; set 1 for production certificates.
-      VRC_WE_TLS_PROD: ${VRC_WE_TLS_PROD:-0}
       RUST_LOG: ${RUST_LOG:-info}
       # Behind your own reverse proxies only: their addresses and CIDR ranges (see README).
       # VRC_WE_RELAY_TRUSTED_PROXIES: "10.0.0.2"

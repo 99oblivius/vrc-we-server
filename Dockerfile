@@ -24,6 +24,6 @@ USER nonroot
 ENV VRC_WE_BIND=0.0.0.0:8443 \
     VRC_WE_TLS_CACHE=/var/lib/vrc-we/acme
 EXPOSE 8443
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --start-interval=5s --retries=3 \
     CMD ["/usr/local/bin/vrc-we-server", "--healthcheck"]
 ENTRYPOINT ["/usr/local/bin/vrc-we-server"]

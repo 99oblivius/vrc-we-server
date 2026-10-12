@@ -37,7 +37,6 @@ services:
       VRC_WE_ACCEPT_EULA: "2026-10"            # the EULA version you accept
       VRC_WE_TLS_DOMAINS: "relay.example.com"  # a DNS name pointing at this host
       VRC_WE_TLS_EMAIL: "you@example.com"      # the Let's Encrypt account contact
-      VRC_WE_TLS_PROD: "0"                     # 1 once a staging certificate was issued
     volumes:
       - acme-cache:/var/lib/vrc-we/acme
     read_only: true
@@ -68,16 +67,15 @@ docker run -d --name vrc-we-server --restart unless-stopped \
   -e VRC_WE_ACCEPT_EULA=2026-10 \
   -e VRC_WE_TLS_DOMAINS=relay.example.com \
   -e VRC_WE_TLS_EMAIL=you@example.com \
-  -e VRC_WE_TLS_PROD=0 \
   -v vrc-we-acme:/var/lib/vrc-we/acme \
   --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
   --memory 256m --log-opt max-size=10m --log-opt max-file=3 \
   99oblivius/vrc-we-server:latest
 ```
 
-### Production certificates
+### First start
 
-The relay starts on Let's Encrypt's **staging** directory, whose certificates clients do not trust. Once the logs (`docker compose logs`, or `docker logs vrc-we-server`) show a certificate issued, set `VRC_WE_TLS_PROD` to `1` and recreate the container: `docker compose up -d`, or `docker rm -f vrc-we-server` and the same `docker run` with `-e VRC_WE_TLS_PROD=1`.
+The relay loads its certificate from the volume, or orders one from Let's Encrypt, which reaches it on port 443. Until the certificate is ready, clients cannot connect. The logs (`docker compose logs`, or `docker logs vrc-we-server`) report each step and say when clients can connect, and the container turns healthy at the same moment. The certificate is renewed in place.
 
 Clients then connect to `relay.example.com`.
 
@@ -89,17 +87,14 @@ Port 443 reaches the relay, which terminates TLS itself, as in the quick start. 
 
 ### Behind your own reverse proxy
 
-Leave the TLS variables empty; the relay serves plain HTTP on port 8443 and the proxy terminates TLS. Publish the port only where the proxy reaches it, for example `127.0.0.1:8443:8443` in `ports` (`-p 127.0.0.1:8443:8443`). The proxy must:
+Leave the TLS variables empty: the relay serves plain HTTP on port 8443, and the proxy terminates TLS. Clients only connect over TLS, so publish the port to the proxy alone, for example `127.0.0.1:8443:8443` (`-p 127.0.0.1:8443:8443`). The proxy must:
 
-- forward WebSocket upgrades on `/ws`;
-- allow idle connections of at least 60 s (keep-alive pings run every 30 s);
-- append the address that connected to it to `X-Forwarded-For`, for example nginx's `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`.
+- forward WebSocket upgrades on `/ws` and keep idle connections open for at least 60 s;
+- append the address that connected to it to `X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
 
-Set `VRC_WE_RELAY_TRUSTED_PROXIES` to the proxy's address. Starting from the connection's source address, the relay reads one more `X-Forwarded-For` entry from the right for as long as the current address is trusted; the first untrusted address is the client. A client can only write entries the walk never reaches.
+Set `VRC_WE_RELAY_TRUSTED_PROXIES` to the proxy's address, and to [your CDN's ranges](https://www.cloudflare.com/ips/) if one sits in front. The relay reads `X-Forwarded-For` only as far as these addresses wrote it, so a client cannot forge its own. A missing range fails safe: that traffic is rate-limited as one client. `0.0.0.0/0` and `::/0` are refused.
 
-Behind a CDN such as Cloudflare, also list [the CDN's ranges](https://www.cloudflare.com/ips/), and make sure your proxy does not itself replace the connecting address with a client-supplied header for this host. Nginx Proxy Manager, for example, trusts `X-Real-IP` from CDN and private ranges by default; add `set_real_ip_from 127.0.0.1/32;` to the host's advanced configuration to turn that off for the relay.
-
-A missing range fails safe: that proxy's traffic is rate-limited as one client. `0.0.0.0/0` and `::/0` are refused at startup.
+Nginx Proxy Manager trusts `X-Real-IP` from CDN and private ranges by default; add `set_real_ip_from 127.0.0.1/32;` to the host's advanced configuration so it keeps the address that connected.
 
 ## Configuration
 
@@ -109,7 +104,6 @@ A missing range fails safe: that proxy's traffic is rate-limited as one client. 
 | `VRC_WE_BIND` | `0.0.0.0:8443` (image) / `127.0.0.1:8443` (plain, outside the image) / `0.0.0.0:443` (TLS, outside the image) | Listen address. |
 | `VRC_WE_TLS_DOMAINS` | unset | Comma-separated domains to obtain certificates for. Set, it enables in-process TLS. |
 | `VRC_WE_TLS_EMAIL` | unset (required with TLS) | Let's Encrypt account contact. |
-| `VRC_WE_TLS_PROD` | `0` | `1` uses Let's Encrypt's production directory instead of staging. |
 | `VRC_WE_TLS_CACHE` | `/var/lib/vrc-we/acme` (image) / `./acme-cache` | Where certificates are kept. Mount a volume here. |
 | `VRC_WE_RELAY_TRUSTED_PROXIES` | unset | Addresses and CIDR ranges of your own reverse proxies, comma-separated (see [Hosting](#behind-your-own-reverse-proxy)). |
 | `VRC_WE_RELAY_MAX_BYTES_PER_SEC` | `10000000` | Sustained inbound bytes per second, per client address. |
@@ -128,7 +122,7 @@ A missing range fails safe: that proxy's traffic is rate-limited as one client. 
 - A connection holds at most 1024 tags, and a tag at most 8 connections.
 - A recipient that falls 256 frames behind is disconnected rather than silently missing a frame; the client reconnects and re-synchronizes.
 - Over the byte budget, the relay sends `RateLimited` and closes the connection; over the connection rate, it answers HTTP 429 with `Retry-After`.
-- The image is distroless, runs as non-root, and checks its own health (`--healthcheck`). The compose file adds a read-only root filesystem, dropped capabilities, `no-new-privileges`, a 256 MB memory cap and rotated logs.
+- The image is distroless, runs as non-root, and checks its own health (`--healthcheck`): with TLS, a handshake that succeeds once a certificate is deployed; without, `/health`. The compose file adds a read-only root filesystem, dropped capabilities, `no-new-privileges`, a 256 MB memory cap and rotated logs.
 
 ### Versions
 

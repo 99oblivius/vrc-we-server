@@ -1484,6 +1484,7 @@ dependencies = [
  "futures-util",
  "ipnet",
  "parking_lot",
+ "rcgen",
  "relay-wire",
  "rustls-acme",
  "serde_json",

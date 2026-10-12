@@ -17,27 +17,35 @@ const SERVER_ID: &str = "vrc-we-server";
 const EULA_URL: &str = "https://github.com/99oblivius/vrc-we-server/blob/main/EULA.md";
 
 /// Container liveness probe: the distroless image has no shell, so the
-/// healthcheck runs the relay binary itself. TLS on ⇒ a listening socket
-/// is the signal (plaintext HTTP can't reach it); TLS off ⇒ a real
-/// HTTP GET against `/health`. Exit 0 = healthy.
+/// healthcheck runs the relay binary itself. TLS on ⇒ a TLS handshake for
+/// the first domain, which completes only once a certificate is deployed;
+/// TLS off ⇒ a real HTTP GET against `/health`. Exit 0 = healthy.
 fn run_healthcheck() -> i32 {
     use std::io::{Read, Write};
-    let tls_on = std::env::var("VRC_WE_TLS_DOMAINS")
-        .map(|v| !v.trim().is_empty())
-        .unwrap_or(false);
+    let first_domain = std::env::var("VRC_WE_TLS_DOMAINS").ok().and_then(|v| {
+        v.split(',')
+            .map(str::trim)
+            .find(|d| !d.is_empty())
+            .map(String::from)
+    });
+    let tls_on = first_domain.is_some();
     let default_port = if tls_on { 443 } else { 8443 };
     let port: u16 = std::env::var("VRC_WE_BIND")
         .ok()
         .and_then(|b| b.rsplit(':').next().and_then(|p| p.parse().ok()))
         .unwrap_or(default_port);
+    if let Some(domain) = first_domain {
+        return if server::tls::handshake_ready(port, &domain) {
+            0
+        } else {
+            1
+        };
+    }
     let addr = format!("127.0.0.1:{port}");
     let mut stream = match std::net::TcpStream::connect(&addr) {
         Ok(s) => s,
         Err(_) => return 1,
     };
-    if tls_on {
-        return 0;
-    }
     let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(2)));
     let _ =
         stream.write_all(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
@@ -94,8 +102,7 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!(
                 %addr,
                 domains = ?settings.domains,
-                production = settings.production,
-                "vrc-we-server listening (ACME TLS)"
+                "vrc-we-server listening on TLS; clients can connect once the certificate is ready"
             );
             let acceptor = settings.into_acceptor();
             axum_server::bind(addr)
