@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rustls_acme::caches::DirCache;
 use rustls_acme::rustls;
-use rustls_acme::{AcmeConfig, EventOk};
+use rustls_acme::{AcmeConfig, EventError, EventOk};
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub enum TlsError {
     NoDomains,
     #[error("VRC_WE_TLS_EMAIL must be set when VRC_WE_TLS_DOMAINS is")]
     NoEmail,
-    #[error("cache dir {0:?} is not writable: {1}")]
+    #[error("VRC_WE_TLS_CACHE {0:?} is not writable ({1}): mount a volume the relay can write to")]
     CacheNotWritable(PathBuf, std::io::Error),
 }
 
@@ -48,7 +48,10 @@ impl AcmeSettings {
         let cache_dir = std::env::var("VRC_WE_TLS_CACHE")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("./acme-cache"));
+        let probe = cache_dir.join(".write-probe");
         std::fs::create_dir_all(&cache_dir)
+            .and_then(|()| std::fs::write(&probe, b""))
+            .and_then(|()| std::fs::remove_file(&probe))
             .map_err(|e| TlsError::CacheNotWritable(cache_dir.clone(), e))?;
         Ok(Some(Self {
             domains,
@@ -74,18 +77,32 @@ impl AcmeSettings {
             use futures_util::StreamExt;
             let mut ready = false;
             while let Some(event) = state.next().await {
-                match event {
+                let err = match event {
                     Ok(ok) => {
                         if let Some(line) = cert_progress(&ok, ready) {
                             tracing::info!("certificate: {line}");
                         }
                         ready |=
                             matches!(ok, EventOk::DeployedCachedCert | EventOk::DeployedNewCert);
+                        continue;
                     }
-                    Err(err) if ready => tracing::warn!("certificate: {err}; retrying"),
-                    Err(err) => {
-                        tracing::error!("certificate: {err}; retrying, clients cannot connect yet")
+                    Err(err) => err,
+                };
+                let failure = match &err {
+                    EventError::CertCacheStore(_) | EventError::AccountCacheStore(_) => {
+                        Failure::CacheStore
                     }
+                    EventError::Order(_) => Failure::Order,
+                    _ => Failure::Other,
+                };
+                let (tail, pause) = on_failure(failure, ready);
+                if ready || failure == Failure::CacheStore {
+                    tracing::warn!("certificate: {err}; {tail}");
+                } else {
+                    tracing::error!("certificate: {err}; {tail}");
+                }
+                if let Some(pause) = pause {
+                    tokio::time::sleep(pause).await;
                 }
             }
         });
@@ -174,6 +191,34 @@ impl rustls::client::danger::ServerCertVerifier for AnyCertificate {
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
         self.0.signature_verification_algorithms.supported_schemes()
+    }
+}
+
+/// The pause after a failed order. Let's Encrypt refuses a hostname for an
+/// hour after five failed authorizations, and its library retries within
+/// seconds; one order per 12 minutes never reaches that limit.
+const ORDER_RETRY_GAP: Duration = Duration::from_secs(12 * 60);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Failure {
+    CacheStore,
+    Order,
+    Other,
+}
+
+/// How the relay answers a failed certificate step, given whether a
+/// certificate was already deployed: the log line's tail, and the pause
+/// before the next order. A restart retries at once.
+fn on_failure(failure: Failure, ready: bool) -> (&'static str, Option<Duration>) {
+    match (failure, ready) {
+        (Failure::CacheStore, _) => ("not kept, the next start orders again", None),
+        (Failure::Order, false) => (
+            "clients cannot connect yet; next attempt in 12 min, or fix the setup and restart to retry now",
+            Some(ORDER_RETRY_GAP),
+        ),
+        (Failure::Order, true) => ("renewal retried in 12 min", Some(ORDER_RETRY_GAP)),
+        (Failure::Other, false) => ("retrying, clients cannot connect yet", None),
+        (Failure::Other, true) => ("retrying", None),
     }
 }
 
@@ -355,5 +400,44 @@ mod tests {
             .unwrap()
             .port();
         assert!(!handshake_ready(port, "relay.test"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_cache_the_relay_cannot_write_refuses_to_start() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+        if std::fs::write(tmp.path().join("root-probe"), b"").is_ok() {
+            return; // root ignores permissions; nothing to observe
+        }
+        with_env(
+            &[
+                ("VRC_WE_TLS_DOMAINS", Some("relay.example.com")),
+                ("VRC_WE_TLS_EMAIL", Some("admin@example.com")),
+                ("VRC_WE_TLS_CACHE", Some(tmp.path().to_str().unwrap())),
+            ],
+            || match AcmeSettings::from_env() {
+                Err(TlsError::CacheNotWritable(..)) => {}
+                other => panic!("expected CacheNotWritable, got {other:?}"),
+            },
+        );
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    #[test]
+    fn a_failed_order_pauses_long_enough_to_stay_under_the_failure_limit() {
+        for ready in [false, true] {
+            let (_, pause) = on_failure(Failure::Order, ready);
+            let pause = pause.expect("a failed order pauses");
+            assert!(pause * 5 >= Duration::from_secs(3600), "{pause:?}");
+        }
+        assert_eq!(
+            ORDER_RETRY_GAP,
+            Duration::from_secs(12 * 60),
+            "the log says 12 min"
+        );
+        assert_eq!(on_failure(Failure::CacheStore, false).1, None);
+        assert_eq!(on_failure(Failure::Other, true).1, None);
     }
 }

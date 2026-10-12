@@ -20,7 +20,7 @@ The client's [EULA](EULA.md) tells its users that every relay they use sees this
 
 ## Quick start
 
-The relay runs from the `99oblivius/vrc-we-server` image. Pick a DNS name that points at the host and keep port 443 free: the relay obtains its certificate in-process through Let's Encrypt. Both forms below set up the same container, and `podman` and `podman compose` take them unchanged.
+The relay runs from the `99oblivius/vrc-we-server` image. Pick a DNS name that points at the host, and give the relay the host's public port 443: it obtains its certificate in-process through Let's Encrypt, which checks it there. If another service already holds port 443, run the relay [behind that service's proxy](#behind-your-own-reverse-proxy) instead. Both forms below set up the same container, and `podman` and `podman compose` take them unchanged.
 
 ### Compose
 
@@ -77,6 +77,8 @@ docker run -d --name vrc-we-server --restart unless-stopped \
 
 The relay loads its certificate from the volume, or orders one from Let's Encrypt, which reaches it on port 443. Until the certificate is ready, clients cannot connect. The logs (`docker compose logs`, or `docker logs vrc-we-server`) report each step and say when clients can connect, and the container turns healthy at the same moment. The certificate is renewed in place.
 
+If an order fails, the log quotes Let's Encrypt's reason, for example a timeout when port 443 does not reach the host, and the relay waits 12 minutes before the next attempt: Let's Encrypt blocks a name for an hour after five failures. Fix the setup and restart the relay to retry at once.
+
 Clients then connect to `relay.example.com`.
 
 ## Hosting
@@ -104,7 +106,7 @@ Nginx Proxy Manager trusts `X-Real-IP` from CDN and private ranges by default; a
 | `VRC_WE_BIND` | `0.0.0.0:8443` (image) / `127.0.0.1:8443` (plain, outside the image) / `0.0.0.0:443` (TLS, outside the image) | Listen address. |
 | `VRC_WE_TLS_DOMAINS` | unset | Comma-separated domains to obtain certificates for. Set, it enables in-process TLS. |
 | `VRC_WE_TLS_EMAIL` | unset (required with TLS) | Let's Encrypt account contact. |
-| `VRC_WE_TLS_CACHE` | `/var/lib/vrc-we/acme` (image) / `./acme-cache` | Where certificates are kept. Mount a volume here. |
+| `VRC_WE_TLS_CACHE` | `/var/lib/vrc-we/acme` (image) / `./acme-cache` | Where certificates are kept. Mount a volume here; the relay refuses to start if it cannot write to it (the image runs as uid 65532). |
 | `VRC_WE_RELAY_TRUSTED_PROXIES` | unset | Addresses and CIDR ranges of your own reverse proxies, comma-separated (see [Hosting](#behind-your-own-reverse-proxy)). |
 | `VRC_WE_RELAY_MAX_BYTES_PER_SEC` | `10000000` | Sustained inbound bytes per second, per client address. |
 | `VRC_WE_RELAY_MAX_BURST_BYTES` | `20000000` | Token-bucket depth: the largest momentary burst tolerated. |
