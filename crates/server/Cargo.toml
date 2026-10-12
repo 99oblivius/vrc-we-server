@@ -24,6 +24,8 @@ futures-util = { workspace = true }
 ipnet = "2"
 parking_lot = { workspace = true }
 rustls-acme = { version = "0.15", default-features = false, features = ["aws-lc-rs", "tls12", "webpki-roots", "axum", "tokio"] }
+x509-parser = "0.16"
+async-trait = "0.1"
 axum-server = "0.8"
 
 [build-dependencies]

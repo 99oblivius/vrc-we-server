@@ -75,9 +75,9 @@ docker run -d --name vrc-we-server --restart unless-stopped \
 
 ### First start
 
-The relay loads its certificate from the volume, or orders one from Let's Encrypt, which reaches it on port 443. Until the certificate is ready, clients cannot connect. The logs (`docker compose logs`, or `docker logs vrc-we-server`) report each step and say when clients can connect, and the container turns healthy at the same moment. The certificate is renewed in place, starting 30 days before it expires, which again needs port 443.
+The relay loads its certificate from the volume, or orders one from Let's Encrypt, which reaches it on port 443. Until the certificate is ready, clients cannot connect. The logs (`docker compose logs`, or `docker logs vrc-we-server`) report each step and say when clients can connect, and the container turns healthy at the same moment. The logs give the certificate's end date. It is renewed in place, starting 30 days before it expires, which again needs port 443.
 
-If an order fails, the log quotes Let's Encrypt's reason, for example a timeout when port 443 does not reach the host. The relay retries after 12 minutes, twice, then after an hour, then every 6 hours until it succeeds; Let's Encrypt blocks a name for an hour after five failures. Fix the setup and restart the relay to retry at once. A failed renewal keeps the current certificate in use.
+If an order fails, the log quotes Let's Encrypt's reason, for example a timeout when port 443 does not reach the host. The relay retries after 12 minutes, twice, then after an hour, then every 6 hours until it succeeds; Let's Encrypt blocks a name for an hour after five failures. Fix the setup and restart the relay to retry at once. A failed renewal keeps the current certificate in use; after five in a row, the attempt that follows the first 6-hour wait, the container turns unhealthy and the log says why, while clients keep connecting until the certificate expires. An expired certificate is unhealthy too.
 
 Clients then connect to `relay.example.com`.
 
@@ -119,12 +119,12 @@ Nginx Proxy Manager trusts `X-Real-IP` from CDN and private ranges by default; a
 
 ### Limits and endpoints
 
-- `/ws` is the relay, `/health` answers `ok`, and `/pair` serves the static page that turns an invite link into a `vrc-we://` deep link. The invite token stays in the URL fragment, which browsers never send to the server.
+- `/ws` is the relay, `/health` answers `ok` (or 503 with the reason while the certificate is unhealthy), and `/pair` serves the static page that turns an invite link into a `vrc-we://` deep link. The invite token stays in the URL fragment, which browsers never send to the server.
 - A payload is one Noise message, at most 65 535 bytes; a larger one closes the connection.
 - A connection holds at most 1024 tags, and a tag at most 8 connections.
 - A recipient that falls 256 frames behind is disconnected rather than silently missing a frame; the client reconnects and re-synchronizes.
 - Over the byte budget, the relay sends `RateLimited` and closes the connection; over the connection rate, it answers HTTP 429 with `Retry-After`.
-- The image is distroless, runs as non-root, and checks its own health (`--healthcheck`): with TLS, a handshake that succeeds once a certificate is deployed; without, `/health`. The compose file adds a read-only root filesystem, dropped capabilities, `no-new-privileges`, a 256 MB memory cap and rotated logs.
+- The image is distroless, runs as non-root, and checks its own health (`--healthcheck`, a request to `/health`, over TLS when TLS is on): healthy once a certificate is deployed, unhealthy while renewal keeps failing or once it expired. The compose file adds a read-only root filesystem, dropped capabilities, `no-new-privileges`, a 256 MB memory cap and rotated logs.
 
 ### Versions
 

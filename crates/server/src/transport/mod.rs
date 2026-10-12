@@ -39,6 +39,8 @@ pub struct AppState {
     pub routing: RoutingTable,
     pub server_id: Arc<String>,
     pub rate: Arc<RateLimiter>,
+    /// The certificate `/health` reports, with TLS on.
+    pub cert: Option<Arc<crate::tls::CertHealth>>,
 }
 
 impl AppState {
@@ -47,7 +49,13 @@ impl AppState {
             routing,
             server_id: Arc::new(server_id.into()),
             rate: Arc::new(rate),
+            cert: None,
         }
+    }
+
+    pub fn with_cert_health(mut self, cert: Arc<crate::tls::CertHealth>) -> Self {
+        self.cert = Some(cert);
+        self
     }
 
     /// Fresh routing table with a permissive limiter — for tests and local dev.
@@ -56,6 +64,7 @@ impl AppState {
             routing: RoutingTable::new(),
             server_id: Arc::new(server_id.into()),
             rate: Arc::new(RateLimiter::permissive()),
+            cert: None,
         }
     }
 }

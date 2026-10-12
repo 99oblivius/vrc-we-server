@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rustls_acme::caches::DirCache;
 use rustls_acme::rustls;
-use rustls_acme::{AcmeConfig, EventError, EventOk};
+use rustls_acme::{AcmeConfig, CertCache, EventError, EventOk};
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -64,10 +64,15 @@ impl AcmeSettings {
     /// loaded from the cache, or ordered from Let's Encrypt's production
     /// directory, then renewed. Until one is deployed the listener answers
     /// only Let's Encrypt's challenge, and every client handshake fails.
-    pub fn into_acceptor(self) -> rustls_acme::axum::AxumAcceptor {
+    /// `health` follows the certificate for `/health`.
+    pub fn into_acceptor(self, health: Arc<CertHealth>) -> rustls_acme::axum::AxumAcceptor {
+        let certs = WatchedCertCache {
+            dir: DirCache::new(self.cache_dir.clone()),
+            health: health.clone(),
+        };
         let mut state = AcmeConfig::new(self.domains.clone())
             .contact_push(format!("mailto:{}", self.email))
-            .cache(DirCache::new(self.cache_dir))
+            .cache_compose(certs, DirCache::new(self.cache_dir))
             .directory_lets_encrypt(true)
             .state();
         let rustls_config = state.default_rustls_config();
@@ -80,12 +85,15 @@ impl AcmeSettings {
             while let Some(event) = state.next().await {
                 let err = match event {
                     Ok(ok) => {
-                        if let Some(line) = cert_progress(&ok, ready) {
+                        let valid_until = health.valid_until();
+                        if let Some(line) = cert_progress(&ok, ready, valid_until.as_deref()) {
                             tracing::info!("certificate: {line}");
                         }
                         if matches!(ok, EventOk::DeployedCachedCert | EventOk::DeployedNewCert) {
                             ready = true;
                             retries.succeeded();
+                            health.deployed();
+                            let _ = health.check();
                         }
                         continue;
                     }
@@ -104,6 +112,10 @@ impl AcmeSettings {
                 } else {
                     tracing::error!("certificate: {err}; {tail}");
                 }
+                if ready && failure == Failure::Order {
+                    health.renewal_failed();
+                    let _ = health.check();
+                }
                 if let Some(pause) = pause {
                     tokio::time::sleep(pause).await;
                 }
@@ -114,11 +126,14 @@ impl AcmeSettings {
     }
 }
 
-/// Whether the relay on local `port` completes a TLS handshake for
-/// `domain`: the health check's signal that a certificate is deployed.
-/// Only the certificate's presence is asked, so it is not verified.
-pub fn handshake_ready(port: u16, domain: &str) -> bool {
+/// Whether the relay on local `port` answers `GET /health` with 200 over
+/// TLS for `domain`: the health check with TLS on. Without a deployed
+/// certificate the handshake fails; with one, `/health` reports
+/// `CertHealth`. Only the certificate's presence is asked, so it is not
+/// verified.
+pub fn https_healthy(port: u16, domain: &str) -> bool {
     use rustls::pki_types::ServerName;
+    use std::io::{Read, Write};
     let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
     let Ok(builder) = rustls::ClientConfig::builder_with_provider(provider.clone())
         .with_safe_default_protocol_versions()
@@ -132,20 +147,28 @@ pub fn handshake_ready(port: u16, domain: &str) -> bool {
     let Ok(name) = ServerName::try_from(domain.to_string()) else {
         return false;
     };
-    let Ok(mut conn) = rustls::ClientConnection::new(Arc::new(config), name) else {
+    let Ok(conn) = rustls::ClientConnection::new(Arc::new(config), name) else {
         return false;
     };
-    let Ok(mut socket) = std::net::TcpStream::connect(("127.0.0.1", port)) else {
+    let Ok(socket) = std::net::TcpStream::connect(("127.0.0.1", port)) else {
         return false;
     };
     let _ = socket.set_read_timeout(Some(Duration::from_secs(3)));
     let _ = socket.set_write_timeout(Some(Duration::from_secs(3)));
-    while conn.is_handshaking() {
-        if conn.complete_io(&mut socket).is_err() {
-            return false;
+    let mut tls = rustls::StreamOwned::new(conn, socket);
+    let request = format!("GET /health HTTP/1.1\r\nHost: {domain}\r\nConnection: close\r\n\r\n");
+    if tls.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut head = Vec::new();
+    let mut chunk = [0u8; 256];
+    while !head.windows(2).any(|w| w == b"\r\n") {
+        match tls.read(&mut chunk) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => head.extend_from_slice(&chunk[..n]),
         }
     }
-    true
+    head.starts_with(b"HTTP/1.1 200") || head.starts_with(b"HTTP/1.0 200")
 }
 
 /// Accepts any certificate while still checking the handshake's signatures.
@@ -279,14 +302,168 @@ fn on_failure(
 }
 
 /// The log line for a certificate event, given whether a certificate was
-/// already deployed. Cache stores are not news.
-fn cert_progress(event: &EventOk, ready: bool) -> Option<&'static str> {
+/// already deployed and the end of the latest one seen.
+fn cert_progress(event: &EventOk, ready: bool, valid_until: Option<&str>) -> Option<String> {
+    let until = valid_until.map_or(String::new(), |t| format!(", valid until {t}"));
     match event {
-        EventOk::AccountCacheStore => Some("Let's Encrypt account created; ordering"),
-        EventOk::DeployedCachedCert => Some("loaded from the cache; ready, clients can connect"),
-        EventOk::DeployedNewCert if ready => Some("renewed"),
-        EventOk::DeployedNewCert => Some("issued by Let's Encrypt; ready, clients can connect"),
-        EventOk::CertCacheStore => None,
+        EventOk::AccountCacheStore => Some("Let's Encrypt account created; ordering".into()),
+        EventOk::DeployedCachedCert => Some(format!(
+            "loaded from the cache{until}; ready, clients can connect"
+        )),
+        EventOk::DeployedNewCert if ready => Some("renewed".into()),
+        EventOk::DeployedNewCert => {
+            Some("issued by Let's Encrypt; ready, clients can connect".into())
+        }
+        EventOk::CertCacheStore => Some(format!("kept in the cache{until}")),
+    }
+}
+
+/// Consecutive failed renewals that mark the relay unhealthy: the fifth is
+/// the attempt after the first 6-hour pause (`ORDER_RETRY_GAPS`). The
+/// current certificate keeps serving until it expires.
+const UNHEALTHY_AFTER_FAILED_RENEWALS: usize = 5;
+
+/// The deployed certificate as `/health` reports it.
+#[derive(Debug, Default)]
+pub struct CertHealth {
+    state: std::sync::Mutex<CertState>,
+}
+
+#[derive(Debug, Default)]
+struct CertState {
+    /// The latest certificate's end: Unix seconds, and as written in it.
+    not_after: Option<(i64, String)>,
+    deployed: bool,
+    failed_renewals: usize,
+    /// Why a deployed certificate was last reported unhealthy; each change
+    /// is logged once.
+    unhealthy: Option<String>,
+}
+
+impl CertHealth {
+    fn lock(&self) -> std::sync::MutexGuard<'_, CertState> {
+        self.state.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// Records the end of the certificate in a stored PEM bundle.
+    fn record(&self, pem: &[u8]) {
+        if let Some(end) = not_after(pem) {
+            self.lock().not_after = Some(end);
+        }
+    }
+
+    fn deployed(&self) {
+        let mut state = self.lock();
+        state.deployed = true;
+        state.failed_renewals = 0;
+    }
+
+    fn renewal_failed(&self) {
+        self.lock().failed_renewals += 1;
+    }
+
+    fn valid_until(&self) -> Option<String> {
+        self.lock()
+            .not_after
+            .as_ref()
+            .map(|(_, shown)| shown.clone())
+    }
+
+    /// Healthy, or why not. A deployed certificate turning unhealthy, or
+    /// back, is logged once.
+    pub fn check(&self) -> Result<(), String> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64);
+        self.check_at(now)
+    }
+
+    fn check_at(&self, now: i64) -> Result<(), String> {
+        let mut state = self.lock();
+        let verdict = verdict(&state, now);
+        if state.deployed {
+            let reason = verdict.as_ref().err().cloned();
+            if reason != state.unhealthy {
+                match &reason {
+                    Some(reason) => tracing::error!("health: unhealthy: {reason}"),
+                    None => tracing::info!("health: healthy again"),
+                }
+                state.unhealthy = reason;
+            }
+        }
+        verdict
+    }
+}
+
+fn verdict(state: &CertState, now: i64) -> Result<(), String> {
+    if !state.deployed {
+        return Err("no certificate yet".into());
+    }
+    if let Some((end, shown)) = &state.not_after {
+        if now >= *end {
+            return Err(format!(
+                "the certificate expired {shown}, clients cannot connect: fix port 443 and restart the relay"
+            ));
+        }
+    }
+    if state.failed_renewals >= UNHEALTHY_AFTER_FAILED_RENEWALS {
+        let until = state
+            .not_after
+            .as_ref()
+            .map_or(String::new(), |(_, shown)| {
+                format!(" until it expires {shown}")
+            });
+        return Err(format!(
+            "certificate renewal failed {} times in a row: fix port 443 and restart the relay; clients can connect{until}",
+            state.failed_renewals
+        ));
+    }
+    Ok(())
+}
+
+/// The end of the first certificate in a PEM bundle; the bundle
+/// `rustls-acme` stores starts with the private key.
+fn not_after(pem: &[u8]) -> Option<(i64, String)> {
+    x509_parser::pem::Pem::iter_from_buffer(pem)
+        .filter_map(Result::ok)
+        .find(|block| block.label == "CERTIFICATE")
+        .and_then(|block| {
+            let end = block.parse_x509().ok()?.validity().not_after;
+            Some((end.timestamp(), end.to_string()))
+        })
+}
+
+/// The certificate cache: `DirCache`, recording each certificate it loads
+/// or stores in `CertHealth`.
+struct WatchedCertCache {
+    dir: DirCache<PathBuf>,
+    health: Arc<CertHealth>,
+}
+
+#[async_trait::async_trait]
+impl CertCache for WatchedCertCache {
+    type EC = std::io::Error;
+
+    async fn load_cert(
+        &self,
+        domains: &[String],
+        directory_url: &str,
+    ) -> Result<Option<Vec<u8>>, Self::EC> {
+        let pem = self.dir.load_cert(domains, directory_url).await?;
+        if let Some(pem) = &pem {
+            self.health.record(pem);
+        }
+        Ok(pem)
+    }
+
+    async fn store_cert(
+        &self,
+        domains: &[String],
+        directory_url: &str,
+        cert: &[u8],
+    ) -> Result<(), Self::EC> {
+        self.health.record(cert);
+        self.dir.store_cert(domains, directory_url, cert).await
     }
 }
 
@@ -385,44 +562,55 @@ mod tests {
     }
 
     #[test]
-    fn the_log_says_ready_once_and_then_only_renewals() {
+    fn the_log_says_ready_once_then_renewals_with_the_end_date() {
+        let until = Some("Jan 10 00:00:00 2027 +00:00");
         assert_eq!(
-            cert_progress(&EventOk::DeployedNewCert, false),
-            Some("issued by Let's Encrypt; ready, clients can connect")
+            cert_progress(&EventOk::DeployedNewCert, false, None).unwrap(),
+            "issued by Let's Encrypt; ready, clients can connect"
         );
         assert_eq!(
-            cert_progress(&EventOk::DeployedCachedCert, false),
-            Some("loaded from the cache; ready, clients can connect")
+            cert_progress(&EventOk::DeployedCachedCert, false, until).unwrap(),
+            "loaded from the cache, valid until Jan 10 00:00:00 2027 +00:00; ready, clients can connect"
         );
         assert_eq!(
-            cert_progress(&EventOk::DeployedNewCert, true),
-            Some("renewed")
+            cert_progress(&EventOk::DeployedNewCert, true, until).unwrap(),
+            "renewed"
         );
-        assert_eq!(cert_progress(&EventOk::CertCacheStore, true), None);
+        assert_eq!(
+            cert_progress(&EventOk::CertCacheStore, true, until).unwrap(),
+            "kept in the cache, valid until Jan 10 00:00:00 2027 +00:00"
+        );
     }
 
-    /// Serves one TLS connection with `config` on a local port, completing
-    /// the handshake if the config can.
-    fn serve_once(config: rustls::ServerConfig) -> u16 {
+    /// Serves one TLS connection with `config` on a local port: completes
+    /// the handshake if the config can, then answers the request with
+    /// `response`.
+    fn serve_once(config: rustls::ServerConfig, response: &'static [u8]) -> u16 {
+        use std::io::{Read, Write};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
         std::thread::spawn(move || {
-            let (mut socket, _) = listener.accept().unwrap();
-            let mut conn = rustls::ServerConnection::new(Arc::new(config)).unwrap();
-            while conn.is_handshaking() {
-                if conn.complete_io(&mut socket).is_err() {
-                    break;
+            let (socket, _) = listener.accept().unwrap();
+            let conn = rustls::ServerConnection::new(Arc::new(config)).unwrap();
+            let mut tls = rustls::StreamOwned::new(conn, socket);
+            let mut request = Vec::new();
+            let mut chunk = [0u8; 256];
+            while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                match tls.read(&mut chunk) {
+                    Ok(0) | Err(_) => return,
+                    Ok(n) => request.extend_from_slice(&chunk[..n]),
                 }
             }
-            let _ = conn.complete_io(&mut socket);
+            let _ = tls.write_all(response);
+            tls.conn.send_close_notify();
+            let _ = tls.flush();
         });
         port
     }
 
-    #[test]
-    fn a_relay_with_a_certificate_is_ready() {
+    fn self_signed() -> rustls::ServerConfig {
         let cert = rcgen::generate_simple_self_signed(vec!["relay.test".into()]).unwrap();
-        let config = rustls::ServerConfig::builder_with_provider(Arc::new(
+        rustls::ServerConfig::builder_with_provider(Arc::new(
             rustls::crypto::aws_lc_rs::default_provider(),
         ))
         .with_safe_default_protocol_versions()
@@ -432,8 +620,25 @@ mod tests {
             vec![cert.cert.der().clone()],
             rustls::pki_types::PrivateKeyDer::Pkcs8(cert.key_pair.serialize_der().into()),
         )
-        .unwrap();
-        assert!(handshake_ready(serve_once(config), "relay.test"));
+        .unwrap()
+    }
+
+    #[test]
+    fn a_relay_answering_ok_over_tls_is_healthy() {
+        let port = serve_once(
+            self_signed(),
+            b"HTTP/1.1 200 OK\r\ncontent-length: 2\r\n\r\nok",
+        );
+        assert!(https_healthy(port, "relay.test"));
+    }
+
+    #[test]
+    fn a_relay_reporting_its_certificate_unhealthy_is_not() {
+        let port = serve_once(
+            self_signed(),
+            b"HTTP/1.1 503 Service Unavailable\r\ncontent-length: 0\r\n\r\n",
+        );
+        assert!(!https_healthy(port, "relay.test"));
     }
 
     #[test]
@@ -445,7 +650,7 @@ mod tests {
             .state();
         let config =
             Arc::try_unwrap(state.default_rustls_config()).unwrap_or_else(|a| (*a).clone());
-        assert!(!handshake_ready(serve_once(config), "relay.test"));
+        assert!(!https_healthy(serve_once(config, b""), "relay.test"));
     }
 
     #[test]
@@ -455,7 +660,7 @@ mod tests {
             .local_addr()
             .unwrap()
             .port();
-        assert!(!handshake_ready(port, "relay.test"));
+        assert!(!https_healthy(port, "relay.test"));
     }
 
     #[cfg(unix)]
@@ -524,5 +729,59 @@ mod tests {
         assert_eq!(on_failure(Failure::CacheStore, false, &mut retries).1, None);
         assert_eq!(on_failure(Failure::Other, true, &mut retries).1, None);
         assert_eq!(retries.failed, 0);
+    }
+
+    /// A bundle shaped like the one `rustls-acme` stores: the private key,
+    /// then the certificate, ending 2027-01-10.
+    fn stored_bundle() -> Vec<u8> {
+        let mut params = rcgen::CertificateParams::new(vec!["relay.test".into()]).unwrap();
+        params.not_after = rcgen::date_time_ymd(2027, 1, 10);
+        let key = rcgen::KeyPair::generate().unwrap();
+        let cert = params.self_signed(&key).unwrap();
+        format!("{}\n{}", key.serialize_pem(), cert.pem()).into_bytes()
+    }
+
+    const JAN_10_2027: i64 = 1_799_539_200;
+
+    #[test]
+    fn the_end_date_is_read_from_the_stored_certificate() {
+        let (end, shown) = not_after(&stored_bundle()).unwrap();
+        assert_eq!(end, JAN_10_2027);
+        assert!(shown.contains("2027"), "{shown}");
+        assert_eq!(not_after(b"not a certificate"), None);
+    }
+
+    #[test]
+    fn health_follows_the_certificate_through_failed_renewals_and_expiry() {
+        let health = CertHealth::default();
+        let day = 86_400;
+        assert_eq!(health.check_at(0), Err("no certificate yet".into()));
+        health.record(&stored_bundle());
+        health.deployed();
+        assert_eq!(health.check_at(JAN_10_2027 - 30 * day), Ok(()));
+        for _ in 0..UNHEALTHY_AFTER_FAILED_RENEWALS - 1 {
+            health.renewal_failed();
+        }
+        assert_eq!(
+            health.check_at(JAN_10_2027 - 29 * day),
+            Ok(()),
+            "still retrying"
+        );
+        health.renewal_failed();
+        let reason = health.check_at(JAN_10_2027 - 29 * day).unwrap_err();
+        assert!(reason.contains("renewal failed 5 times"), "{reason}");
+        assert!(
+            reason.contains("clients can connect until it expires"),
+            "{reason}"
+        );
+        let reason = health.check_at(JAN_10_2027).unwrap_err();
+        assert!(reason.contains("expired"), "{reason}");
+        health.deployed();
+        health.record(&stored_bundle());
+        assert_eq!(
+            health.check_at(JAN_10_2027 - 29 * day),
+            Ok(()),
+            "a renewal heals it"
+        );
     }
 }

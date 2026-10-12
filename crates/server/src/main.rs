@@ -1,5 +1,6 @@
 use std::io::IsTerminal;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::serve::ListenerExt;
 use relay_wire::EULA_VERSION;
@@ -7,7 +8,7 @@ use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 use server::routing::RoutingTable;
-use server::tls::AcmeSettings;
+use server::tls::{AcmeSettings, CertHealth};
 use server::transport::AppState;
 use server::{build_router, eula_accepted, ratelimit::RateLimiter};
 
@@ -17,9 +18,10 @@ const SERVER_ID: &str = "vrc-we-server";
 const EULA_URL: &str = "https://github.com/99oblivius/vrc-we-server/blob/main/EULA.md";
 
 /// Container liveness probe: the distroless image has no shell, so the
-/// healthcheck runs the relay binary itself. TLS on ⇒ a TLS handshake for
-/// the first domain, which completes only once a certificate is deployed;
-/// TLS off ⇒ a real HTTP GET against `/health`. Exit 0 = healthy.
+/// healthcheck runs the relay binary itself: a real GET against `/health`,
+/// over TLS for the first domain when TLS is on, where it fails until a
+/// certificate is deployed and while that certificate is unhealthy.
+/// Exit 0 = healthy.
 fn run_healthcheck() -> i32 {
     use std::io::{Read, Write};
     let first_domain = std::env::var("VRC_WE_TLS_DOMAINS").ok().and_then(|v| {
@@ -35,7 +37,7 @@ fn run_healthcheck() -> i32 {
         .and_then(|b| b.rsplit(':').next().and_then(|p| p.parse().ok()))
         .unwrap_or(default_port);
     if let Some(domain) = first_domain {
-        return if server::tls::handshake_ready(port, &domain) {
+        return if server::tls::https_healthy(port, &domain) {
             0
         } else {
             1
@@ -92,10 +94,15 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         .ok();
 
     let state = AppState::new(RoutingTable::new(), SERVER_ID, RateLimiter::from_env()?);
-    let app = build_router(state);
+    let settings = AcmeSettings::from_env()?;
+    let cert = settings.as_ref().map(|_| Arc::new(CertHealth::default()));
+    let app = build_router(match &cert {
+        Some(cert) => state.with_cert_health(cert.clone()),
+        None => state,
+    });
 
-    match AcmeSettings::from_env()? {
-        Some(settings) => {
+    match settings.zip(cert) {
+        Some((settings, cert)) => {
             let addr: SocketAddr = std::env::var("VRC_WE_BIND")
                 .unwrap_or_else(|_| TLS_BIND.into())
                 .parse()?;
@@ -104,7 +111,7 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
                 domains = ?settings.domains,
                 "vrc-we-server listening on TLS; clients can connect once the certificate is ready"
             );
-            let acceptor = settings.into_acceptor();
+            let acceptor = settings.into_acceptor(cert);
             axum_server::bind(addr)
                 .acceptor(acceptor)
                 .serve(app.into_make_service_with_connect_info::<SocketAddr>())
