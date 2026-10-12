@@ -252,7 +252,7 @@ impl OrderRetries {
 /// `12 min`, `1 h`, `6 h`.
 fn span(d: Duration) -> String {
     let minutes = d.as_secs() / 60;
-    if minutes % 60 == 0 {
+    if minutes.is_multiple_of(60) {
         format!("{} h", minutes / 60)
     } else {
         format!("{minutes} min")

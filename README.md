@@ -138,7 +138,7 @@ VRC_WE_ACCEPT_EULA=2026-10 cargo run -p server   # plain HTTP on 127.0.0.1:8443
 docker build -t vrc-we-server:local .            # needs BuildKit (docker buildx)
 ```
 
-Rust 1.85 or newer. To run a local image, set `image: vrc-we-server:local` in `compose.yml`.
+Rust 1.88 or newer. To run a local image, set `image: vrc-we-server:local` in `compose.yml`.
 
 ## License
 

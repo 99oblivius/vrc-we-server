@@ -5,7 +5,7 @@ members = ["crates/relay-wire", "crates/server"]
 [workspace.package]
 version = "0.0.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.88"
 license-file = "LICENSE"
 repository = "https://github.com/99oblivius/vrc-we-server"
 publish = false
