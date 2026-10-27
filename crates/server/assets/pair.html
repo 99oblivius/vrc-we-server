@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>vrc-WiredExpressions</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<style>
+:root { color-scheme: dark light; }
+body { font-family: system-ui, -apple-system, sans-serif; max-width: 460px; margin: 5em auto; padding: 1em; line-height: 1.5; text-align: center; }
+button { font-size: 1.05em; padding: 0.7em 1.4em; cursor: pointer; border-radius: 6px; border: 1px solid currentColor; background: transparent; color: inherit; }
+button:hover { background: rgba(127,127,127,0.12); }
+.token { font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace; font-size: 0.85em; padding: 0.7em; border: 1px solid rgba(127,127,127,0.35); border-radius: 4px; user-select: all; word-break: break-all; background: rgba(127,127,127,0.06); margin: 1.5em 0 0.5em; text-align: left; }
+.hint { font-size: 0.85em; color: rgba(127,127,127,0.85); margin: 0; }
+.hidden { display: none; }
+.err { color: #c43; }
+</style>
+</head>
+<body>
+<section id="content" class="hidden">
+  <button id="go">Open in vrc-WiredExpressions</button>
+  <div id="token" class="token"></div>
+  <p class="hint">Or paste this token into the Pairing pane.</p>
+</section>
+<section id="error" class="hidden err">
+  <p>Invite missing. The token after <code>#</code> is missing or malformed.</p>
+</section>
+<script>
+(function () {
+  var frag = window.location.hash.replace(/^#/, '');
+  if (!frag || !/^[A-Za-z0-9_-]+$/.test(frag)) {
+    document.getElementById('error').classList.remove('hidden');
+    return;
+  }
+  var deepLink = 'vrc-we://pair/' + frag;
+  document.getElementById('content').classList.remove('hidden');
+  document.getElementById('token').textContent = frag;
+
+  var lastLaunch = 0;
+  var pendingClose = null;
+  var closed = false;
+
+  // Blur fires both when the in-browser prompt opens AND when our app
+  // takes focus. Delay the close; cancel it if focus returns (= user
+  // cancelled the prompt, or no handler installed). If focus never
+  // returns, the user accepted and the app is in the foreground.
+  function armClose() {
+    if (closed || pendingClose || Date.now() - lastLaunch > 30000) return;
+    pendingClose = setTimeout(function () {
+      closed = true;
+      pendingClose = null;
+      try { window.close(); } catch (_) {}
+    }, 6000);
+  }
+  function cancelClose() {
+    if (pendingClose) {
+      clearTimeout(pendingClose);
+      pendingClose = null;
+    }
+  }
+  window.addEventListener('blur', armClose);
+  window.addEventListener('focus', cancelClose);
+
+  function launch() {
+    lastLaunch = Date.now();
+    window.location.href = deepLink;
+  }
+  document.getElementById('go').addEventListener('click', launch);
+  launch();
+})();
+</script>
+</body>
+</html>

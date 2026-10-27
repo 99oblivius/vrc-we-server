@@ -1,0 +1,8 @@
+*
+!Cargo.toml
+!Cargo.lock
+!crates/
+!LICENSE
+!EULA.md
+!THIRD-PARTY-NOTICES.txt
+crates/**/target
