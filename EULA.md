@@ -49,15 +49,15 @@ When you use the Client, the Relay Software or the Official Relay, you will not:
 
 Extensions are separate software that the Client can load. They are not part of the Client, and the Client's licence does not cover them.
 
-An extension written by us is ours, provided under the terms its own listing names. An extension written by someone else is theirs: the author and source named in the listing are its manufacturer, and we distribute a reference to it, not the software itself. We do not review it, we do not endorse it, and we may stop listing it at any time.
+An extension written by us is a product we manufacture, provided under the terms its own listing names. An extension written by someone else is that author's product: the author and source named in the listing identify its manufacturer, and we distribute a reference to it, not the software itself. We do not review it, we do not endorse it, and we may stop listing it at any time.
 
-**Terms.** Each extension is provided under its author's terms. The Client shows those terms before installation and asks you to accept them. Those terms are between you and the author. We are not a party to them and we do not enforce them. When an extension's terms change, you are asked again before it updates.
+**What an extension declares.** An extension may declare what it can do beyond what its permissions already show — for example that it drives hardware on your network, or that it needs an account with a third-party service. Those declarations are the author's and are printed as the author wrote them. The Client shows what a repository's extensions declare before you add that repository, and an extension's own declarations with its details before you install it. We do not verify a declaration, and a declaration is not our statement that an extension is safe, lawful where you are, or fit for any purpose.
 
-**Who provides it.** Where you have a claim about an extension, it lies against the author named in its listing. We will identify that author on request where the law requires us to.
+**Terms.** Each extension is provided under its author's terms. The Client shows those terms with the permissions it asks for, and asks you to accept both before it installs. Those terms are between you and the author. We are not a party to them and we do not enforce them. When they change, you are asked again before an update.
 
-**Age and qualification.** Where an extension's terms require you to be of a certain age, or to hold an account with a service it uses, meeting that requirement is your responsibility. We do not verify it and we do not enforce it on anyone's behalf.
+**Who provides it.** Where you have a claim about an extension, it lies against the author named in its listing — which is us where we wrote it. We will identify that author on request where the law requires us to.
 
-**Discretion.** A repository may declare that its extensions need your discretion, for example because they control devices whose own terms assume an adult user. The Client shows that declaration when you add the repository. It is a warning, not a verification, and it is the author's declaration rather than ours.
+**Age and qualification.** Where an extension's terms require you to be of a certain age, or to hold an account or a qualification with a service it uses, meeting that requirement is your responsibility. We do not verify it and we do not enforce it on anyone's behalf.
 
 ## 6. Independence; feedback
 
