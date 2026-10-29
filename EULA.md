@@ -10,7 +10,7 @@ This agreement ("EULA") is between you and **oblivius** ("Licensor", "we", "us")
 
 **Acceptance.** You accept this EULA by choosing *Accept* when the Client asks, or by setting `VRC_WE_ACCEPT_EULA=2026-10` when you run the Relay Software. If you do not agree, do not use them.
 
-**This EULA contains a disclaimer of warranties (section 6) and a limitation of our liability (section 7).**
+**This EULA contains a disclaimer of warranties (section 7) and a limitation of our liability (section 8).**
 
 ## 1. Definitions
 
@@ -79,7 +79,7 @@ Nothing in this EULA limits or excludes liability for unlawful intent or gross n
 
 ## 9. Termination
 
-Your rights under this EULA end automatically if you breach it. When they end, you must stop using the Client, stop running the Relay Software under this EULA and delete your copies; this does not take away rights the Relay License grants you independently. Sections 4 to 7 and 9 survive termination.
+Your rights under this EULA end automatically if you breach it. When they end, you must stop using the Client, stop running the Relay Software under this EULA and delete your copies; this does not take away rights the Relay License grants you independently. Sections 4 to 8 and 10 survive termination.
 
 ## 10. Changes and general terms
 
@@ -142,7 +142,7 @@ The Official Relay is a publicly available relay that we provide free of charge 
 
 1. **No availability commitment.** We have no obligation to keep the Official Relay available, maintained or updated, and offer no service level. We may modify, rate-limit, suspend or discontinue it, in whole or in part, temporarily or permanently, at any time, with or without notice.
 2. **Access.** The Official Relay may be used only with the Client. We may refuse, limit or end anyone's access to it at any time, for any reason.
-3. **What it processes.** The Official Relay processes the connection data described in section 12. The Relay Software does not log IP addresses. The Official Relay is reached through Cloudflare, which processes connection data, including IP addresses, under its own terms.
+3. **What it processes.** The Official Relay processes the connection data described in section 13. The Relay Software does not log IP addresses. The Official Relay is reached through Cloudflare, which processes connection data, including IP addresses, under its own terms.
 
 ## Contact
 
