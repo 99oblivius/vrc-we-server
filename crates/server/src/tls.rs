@@ -618,7 +618,7 @@ mod tests {
         .with_no_client_auth()
         .with_single_cert(
             vec![cert.cert.der().clone()],
-            rustls::pki_types::PrivateKeyDer::Pkcs8(cert.key_pair.serialize_der().into()),
+            rustls::pki_types::PrivateKeyDer::Pkcs8(cert.signing_key.serialize_der().into()),
         )
         .unwrap()
     }
