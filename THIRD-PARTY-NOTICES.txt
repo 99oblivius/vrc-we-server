@@ -6,7 +6,7 @@ following third-party crates, each under the license reproduced below.
 
 Overview
 --------
-MIT License: 161
+MIT License: 157
 ISC License: 4
 Apache License 2.0: 3
 BSD 3-Clause "New" or "Revised" License: 3
@@ -1189,38 +1189,6 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  arc-swap 1.9.3 (https://github.com/vorner/arc-swap)
-
-Copyright (c) 2017 arc-swap developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
-================================================================================
-MIT License
-Used by:
   h2 0.4.20 (https://github.com/hyperium/h2)
 
 Copyright (c) 2017 h2 authors
@@ -1256,38 +1224,6 @@ Used by:
   http 1.5.0 (https://github.com/hyperium/http)
 
 Copyright (c) 2017 http-rs authors
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
-================================================================================
-MIT License
-Used by:
-  tokio-rustls 0.26.6 (https://github.com/rustls/tokio-rustls)
-
-Copyright (c) 2017 quininer kel
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -2148,7 +2084,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  axum-server 0.8.0 (https://github.com/programatik29/axum-server)
+  axum-server 0.9.0 (https://github.com/programatik29/axum-server)
 
 Copyright 2021 Axum Server Contributors
 
@@ -2383,7 +2319,6 @@ Used by:
   quote 1.0.47 (https://github.com/dtolnay/quote)
   rustix 1.1.6 (https://github.com/bytecodealliance/rustix)
   rustls-acme 0.15.4 (https://github.com/FlorianUekermann/rustls-acme)
-  rustversion 1.0.23 (https://github.com/dtolnay/rustversion)
   serde 1.0.229 (https://github.com/serde-rs/serde)
   serde_bytes 0.11.19 (https://github.com/serde-rs/bytes)
   serde_core 1.0.229 (https://github.com/serde-rs/serde)
@@ -2396,36 +2331,6 @@ Used by:
   thiserror 2.0.21 (https://github.com/dtolnay/thiserror)
   unicode-ident 1.0.27 (https://github.com/dtolnay/unicode-ident)
   zmij 1.0.23 (https://github.com/dtolnay/zmij)
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
-================================================================================
-MIT License
-Used by:
-  fs-err 3.3.2 (https://github.com/andrewhickman/fs-err)
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated

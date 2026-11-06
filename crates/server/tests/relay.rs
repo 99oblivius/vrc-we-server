@@ -7,26 +7,33 @@ use relay_wire::version::VersionRange;
 use relay_wire::{ClientFrame, RouteTag, ServerFrame, CLIENT_WIRE, MIN_CLIENT_WIRE, RELAY_WIRE};
 use tokio_tungstenite::tungstenite::Message;
 
-use server::{build_router, transport::AppState};
+use server::{build_router, serve_plain, transport::AppState, FIRST_REQUEST_DEADLINE};
 
 async fn start_relay() -> u16 {
     start_relay_with(AppState::permissive("test-relay")).await
 }
 
 async fn start_relay_with(state: AppState) -> u16 {
-    let app = build_router(state);
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    start_relay_until(state, FIRST_REQUEST_DEADLINE).await
+}
+
+async fn start_relay_until(state: AppState, first_request: Duration) -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
-    tokio::spawn(async move {
-        let _ = axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        )
-        .await;
-    });
-    // Give the listener a moment to start accepting.
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    tokio::spawn(serve_plain(listener, build_router(state), first_request));
     port
+}
+
+/// All `socket` is sent while it stays silent, or none if it isn't closed
+/// within 2 s.
+async fn sent_until_closed(socket: &mut tokio::net::TcpStream) -> Option<Vec<u8>> {
+    use tokio::io::AsyncReadExt;
+    let mut sent = Vec::new();
+    tokio::time::timeout(Duration::from_secs(2), socket.read_to_end(&mut sent))
+        .await
+        .ok()?
+        .ok()?;
+    Some(sent)
 }
 
 type Ws =
@@ -101,6 +108,86 @@ async fn send_client(
 ) {
     let bytes = serde_json::to_vec(&frame).unwrap();
     ws.send(Message::Binary(bytes.into())).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_connection_with_no_full_request_is_closed_at_the_deadline() {
+    use tokio::io::AsyncWriteExt;
+    let port = start_relay_until(
+        AppState::permissive("test-relay"),
+        Duration::from_millis(200),
+    )
+    .await;
+    let mut silent = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .unwrap();
+    let mut partial = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .unwrap();
+    partial.write_all(b"GET /health HT").await.unwrap();
+    assert!(sent_until_closed(&mut silent).await.is_some());
+    assert!(sent_until_closed(&mut partial).await.is_some());
+}
+
+#[tokio::test]
+async fn a_connection_is_closed_once_its_request_is_answered() {
+    use tokio::io::AsyncWriteExt;
+    let port = start_relay().await;
+    for (path, status) in [("/health", "200"), ("/nowhere", "404"), ("/ws", "400")] {
+        let mut socket = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
+        let request = format!("GET {path} HTTP/1.1\r\nHost: relay\r\n\r\n");
+        socket.write_all(request.as_bytes()).await.unwrap();
+        let sent = sent_until_closed(&mut socket).await.unwrap();
+        assert!(
+            sent.starts_with(format!("HTTP/1.1 {status}").as_bytes()),
+            "{path}: {}",
+            String::from_utf8_lossy(&sent)
+        );
+    }
+}
+
+/// Whether `sent`, frames an HTTP/2 server wrote, holds a response's headers.
+fn holds_http2_headers(mut sent: &[u8]) -> bool {
+    const HEADERS: u8 = 0x1;
+    while sent.len() >= 9 {
+        if sent[3] == HEADERS {
+            return true;
+        }
+        let length = u32::from_be_bytes([0, sent[0], sent[1], sent[2]]) as usize;
+        sent = sent.get(9 + length..).unwrap_or_default();
+    }
+    false
+}
+
+#[tokio::test]
+async fn http2_is_never_answered_and_is_closed_at_the_deadline() {
+    use tokio::io::AsyncWriteExt;
+    let port = start_relay_until(
+        AppState::permissive("test-relay"),
+        Duration::from_millis(200),
+    )
+    .await;
+    let mut socket = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .unwrap();
+    socket
+        .write_all(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+        .await
+        .unwrap();
+    // An empty SETTINGS frame, then GET / in HPACK's static table on stream 1
+    // with END_STREAM and END_HEADERS.
+    socket
+        .write_all(&[0, 0, 0, 0x4, 0, 0, 0, 0, 0])
+        .await
+        .unwrap();
+    socket
+        .write_all(&[0, 0, 3, 0x1, 0x5, 0, 0, 0, 1, 0x82, 0x86, 0x84])
+        .await
+        .unwrap();
+    let sent = sent_until_closed(&mut socket).await.unwrap();
+    assert!(!holds_http2_headers(&sent), "{sent:?}");
 }
 
 #[tokio::test]

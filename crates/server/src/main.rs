@@ -1,16 +1,17 @@
 use std::io::IsTerminal;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener};
 use std::sync::Arc;
 
-use axum::serve::ListenerExt;
 use relay_wire::EULA_VERSION;
-use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 use server::routing::RoutingTable;
 use server::tls::{AcmeSettings, CertHealth};
 use server::transport::AppState;
-use server::{build_router, eula_accepted, ratelimit::RateLimiter};
+use server::{
+    build_router, eula_accepted, ratelimit::RateLimiter, serve_plain, serve_tls,
+    FIRST_REQUEST_DEADLINE,
+};
 
 const DEV_BIND: &str = "127.0.0.1:8443";
 const TLS_BIND: &str = "0.0.0.0:443";
@@ -88,6 +89,22 @@ async fn main() {
     }
 }
 
+fn bind(addr: SocketAddr) -> std::io::Result<TcpListener> {
+    TcpListener::bind(addr).inspect_err(|e| {
+        if e.raw_os_error() == Some(10013) {
+            // WSAEACCES: the port sits in a Windows excluded range
+            // (Hyper-V/WSL/WinNAT) or a firewall blocks it. The `netsh` hint
+            // is the common remedy.
+            tracing::error!(
+                %addr,
+                "bind failed with 10013 (WSAEACCES): check \
+                 `netsh int ipv4 show excludedportrange protocol=tcp` \
+                 and your firewall, or set VRC_WE_BIND to a free port"
+            );
+        }
+    })
+}
+
 async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     rustls_acme::futures_rustls::rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
@@ -106,56 +123,25 @@ async fn serve() -> Result<(), Box<dyn std::error::Error>> {
             let addr: SocketAddr = std::env::var("VRC_WE_BIND")
                 .unwrap_or_else(|_| TLS_BIND.into())
                 .parse()?;
+            let listener = bind(addr)?;
             tracing::info!(
                 %addr,
                 domains = ?settings.domains,
                 "vrc-we-server listening on TLS; clients can connect once the certificate is ready"
             );
             let acceptor = settings.into_acceptor(cert);
-            axum_server::bind(addr)
-                .acceptor(acceptor)
-                .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-                .await?;
+            serve_tls(listener, acceptor, app, FIRST_REQUEST_DEADLINE).await?;
         }
         None => {
             let addr: SocketAddr = std::env::var("VRC_WE_BIND")
                 .unwrap_or_else(|_| DEV_BIND.into())
                 .parse()?;
-            let listener = match TcpListener::bind(addr).await {
-                Ok(l) => l,
-                Err(e) => {
-                    if e.raw_os_error() == Some(10013) {
-                        // WSAEACCES: the port sits in a Windows excluded
-                        // range (Hyper-V/WSL/WinNAT) or a firewall blocks
-                        // it. The `netsh` hint is the common remedy.
-                        tracing::error!(
-                            %addr,
-                            "bind failed with 10013 (WSAEACCES): check \
-                             `netsh int ipv4 show excludedportrange protocol=tcp` \
-                             and your firewall, or set VRC_WE_BIND to a free port"
-                        );
-                    }
-                    return Err(e.into());
-                }
-            };
+            let listener = bind(addr)?;
             tracing::info!(
                 %addr,
                 "vrc-we-server listening on plain HTTP: serve it behind a TLS-terminating proxy"
             );
-            // tokio-tungstenite sets TCP_NODELAY on client connects only;
-            // server-accepted sockets keep Nagle, which stalls the small
-            // 20 Hz wire frames behind a 40 ms delayed-ack window. axum-server
-            // already sets it on the TLS path; mirror it here.
-            let listener = listener.tap_io(|stream: &mut tokio::net::TcpStream| {
-                if let Err(e) = stream.set_nodelay(true) {
-                    tracing::warn!(?e, "set_nodelay failed");
-                }
-            });
-            axum::serve(
-                listener,
-                app.into_make_service_with_connect_info::<SocketAddr>(),
-            )
-            .await?;
+            serve_plain(listener, app, FIRST_REQUEST_DEADLINE).await?;
         }
     }
     Ok(())

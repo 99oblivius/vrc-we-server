@@ -1,11 +1,22 @@
+use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum_server::accept::Accept;
+use futures_util::future::BoxFuture;
 use rustls_acme::caches::DirCache;
+use rustls_acme::futures_rustls::server::TlsStream;
+use rustls_acme::futures_rustls::LazyConfigAcceptor;
 use rustls_acme::rustls;
-use rustls_acme::{AcmeConfig, CertCache, EventError, EventOk};
+use rustls_acme::{is_tls_alpn_challenge, AcmeConfig, CertCache, EventError, EventOk};
 use thiserror::Error;
+use tokio::net::TcpStream;
+use tokio_util::compat::{Compat, FuturesAsyncReadCompatExt, TokioAsyncReadCompatExt};
+
+/// What a connection gets to finish its TLS handshake, or a certificate
+/// challenge's.
+pub const HANDSHAKE_DEADLINE: Duration = Duration::from_secs(10);
 
 #[derive(Debug)]
 pub struct AcmeSettings {
@@ -65,7 +76,7 @@ impl AcmeSettings {
     /// directory, then renewed. Until one is deployed the listener answers
     /// only Let's Encrypt's challenge, and every client handshake fails.
     /// `health` follows the certificate for `/health`.
-    pub fn into_acceptor(self, health: Arc<CertHealth>) -> rustls_acme::axum::AxumAcceptor {
+    pub fn into_acceptor(self, health: Arc<CertHealth>) -> TlsAcceptor {
         let certs = WatchedCertCache {
             dir: DirCache::new(self.cache_dir.clone()),
             health: health.clone(),
@@ -75,8 +86,11 @@ impl AcmeSettings {
             .cache_compose(certs, DirCache::new(self.cache_dir))
             .directory_lets_encrypt(true)
             .state();
-        let rustls_config = state.default_rustls_config();
-        let acceptor = state.axum_acceptor(rustls_config);
+        let acceptor = TlsAcceptor::new(
+            state.challenge_rustls_config(),
+            state.default_rustls_config(),
+            HANDSHAKE_DEADLINE,
+        );
 
         tokio::spawn(async move {
             use futures_util::StreamExt;
@@ -126,28 +140,64 @@ impl AcmeSettings {
     }
 }
 
+/// The handshake under a deadline, which nothing else bounds. A certificate
+/// challenge gets `challenge` and ends with its handshake; every other
+/// connection gets `config`. An acceptor replaces the server's default, so
+/// `TCP_NODELAY` is set here too.
+#[derive(Clone)]
+pub struct TlsAcceptor {
+    challenge: Arc<rustls::ServerConfig>,
+    config: Arc<rustls::ServerConfig>,
+    deadline: Duration,
+}
+
+impl TlsAcceptor {
+    pub fn new(
+        challenge: Arc<rustls::ServerConfig>,
+        config: Arc<rustls::ServerConfig>,
+        deadline: Duration,
+    ) -> Self {
+        Self {
+            challenge,
+            config,
+            deadline,
+        }
+    }
+}
+
+impl<S: Send + 'static> Accept<TcpStream, S> for TlsAcceptor {
+    type Stream = Compat<TlsStream<Compat<TcpStream>>>;
+    type Service = S;
+    type Future = BoxFuture<'static, io::Result<(Self::Stream, S)>>;
+
+    fn accept(&self, stream: TcpStream, service: S) -> Self::Future {
+        let this = self.clone();
+        Box::pin(async move {
+            stream.set_nodelay(true)?;
+            let handshake = async {
+                let start = LazyConfigAcceptor::new(Default::default(), stream.compat()).await?;
+                if is_tls_alpn_challenge(&start.client_hello()) {
+                    start.into_stream(this.challenge).await?;
+                    return Err(io::Error::other("TLS-ALPN-01 validation request"));
+                }
+                start.into_stream(this.config).await
+            };
+            let tls = tokio::time::timeout(this.deadline, handshake)
+                .await
+                .map_err(|_| io::Error::from(io::ErrorKind::TimedOut))??;
+            Ok((tls.compat(), service))
+        })
+    }
+}
+
 /// Whether the relay on local `port` answers `GET /health` with 200 over
 /// TLS for `domain`: the health check with TLS on. Without a deployed
 /// certificate the handshake fails; with one, `/health` reports
 /// `CertHealth`. Only the certificate's presence is asked, so it is not
 /// verified.
 pub fn https_healthy(port: u16, domain: &str) -> bool {
-    use rustls::pki_types::ServerName;
     use std::io::{Read, Write};
-    let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
-    let Ok(builder) = rustls::ClientConfig::builder_with_provider(provider.clone())
-        .with_safe_default_protocol_versions()
-    else {
-        return false;
-    };
-    let config = builder
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(AnyCertificate(provider)))
-        .with_no_client_auth();
-    let Ok(name) = ServerName::try_from(domain.to_string()) else {
-        return false;
-    };
-    let Ok(conn) = rustls::ClientConnection::new(Arc::new(config), name) else {
+    let Some(conn) = any_certificate_config().and_then(|config| client_to(config, domain)) else {
         return false;
     };
     let Ok(socket) = std::net::TcpStream::connect(("127.0.0.1", port)) else {
@@ -169,6 +219,24 @@ pub fn https_healthy(port: u16, domain: &str) -> bool {
         }
     }
     head.starts_with(b"HTTP/1.1 200") || head.starts_with(b"HTTP/1.0 200")
+}
+
+/// A client that asks only for a certificate's presence.
+fn any_certificate_config() -> Option<rustls::ClientConfig> {
+    let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
+    Some(
+        rustls::ClientConfig::builder_with_provider(provider.clone())
+            .with_safe_default_protocol_versions()
+            .ok()?
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(AnyCertificate(provider)))
+            .with_no_client_auth(),
+    )
+}
+
+fn client_to(config: rustls::ClientConfig, domain: &str) -> Option<rustls::ClientConnection> {
+    let name = rustls::pki_types::ServerName::try_from(domain.to_string()).ok()?;
+    rustls::ClientConnection::new(Arc::new(config), name).ok()
 }
 
 /// Accepts any certificate while still checking the handshake's signatures.
@@ -606,6 +674,133 @@ mod tests {
             let _ = tls.flush();
         });
         port
+    }
+
+    const CHALLENGE_ALPN: &[u8] = b"acme-tls/1";
+
+    fn acceptor(deadline: Duration) -> TlsAcceptor {
+        let mut challenge = self_signed();
+        challenge.alpn_protocols.push(CHALLENGE_ALPN.to_vec());
+        TlsAcceptor::new(Arc::new(challenge), Arc::new(self_signed()), deadline)
+    }
+
+    /// A TLS relay's port, serving through the deadlines given.
+    fn serve_tls_on_a_port(handshake: Duration, first_request: Duration) -> u16 {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = crate::build_router(crate::transport::AppState::permissive("test-relay"));
+        tokio::spawn(crate::serve_tls(
+            listener,
+            acceptor(handshake),
+            app,
+            first_request,
+        ));
+        port
+    }
+
+    /// Whether the far end closes `socket` while it stays silent, within 5 s.
+    async fn closed_by_the_relay(mut socket: TcpStream) -> bool {
+        use tokio::io::AsyncReadExt;
+        let mut chunk = [0u8; 64];
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                match socket.read(&mut chunk).await {
+                    Ok(0) | Err(_) => return,
+                    Ok(_) => {}
+                }
+            }
+        })
+        .await
+        .is_ok()
+    }
+
+    #[tokio::test]
+    async fn a_handshake_that_stalls_is_closed_at_its_deadline() {
+        use tokio::io::AsyncWriteExt;
+        let port = serve_tls_on_a_port(Duration::from_millis(200), Duration::from_secs(60));
+        let silent = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        let mut partial = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        partial
+            .write_all(&[0x16, 0x03, 0x01, 0x02, 0x00])
+            .await
+            .unwrap();
+        assert!(closed_by_the_relay(silent).await);
+        assert!(closed_by_the_relay(partial).await);
+    }
+
+    /// Finishes a handshake on `port` with `config` and stays silent: the
+    /// protocol it negotiated, and whether the relay then closed it, within 5 s.
+    fn silent_after_handshake(config: rustls::ClientConfig, port: u16) -> (Option<Vec<u8>>, bool) {
+        use std::io::Read;
+        let mut conn = client_to(config, "relay.test").unwrap();
+        let mut socket = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        while conn.is_handshaking() {
+            conn.complete_io(&mut socket).unwrap();
+        }
+        let protocol = conn.alpn_protocol().map(<[u8]>::to_vec);
+        let mut stream = rustls::Stream::new(&mut conn, &mut socket);
+        let mut chunk = [0u8; 64];
+        let closed = loop {
+            match stream.read(&mut chunk) {
+                Ok(0) => break true,
+                Ok(_) => {}
+                Err(e) => {
+                    break !matches!(
+                        e.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                    )
+                }
+            }
+        };
+        (protocol, closed)
+    }
+
+    #[tokio::test]
+    async fn a_finished_handshake_with_no_request_is_closed_at_its_deadline() {
+        let port = serve_tls_on_a_port(Duration::from_secs(60), Duration::from_millis(200));
+        let config = any_certificate_config().unwrap();
+        let (_, closed) = tokio::task::spawn_blocking(move || silent_after_handshake(config, port))
+            .await
+            .unwrap();
+        assert!(closed);
+    }
+
+    #[tokio::test]
+    async fn a_certificate_challenge_gets_its_config_and_ends_with_the_handshake() {
+        let port = serve_tls_on_a_port(Duration::from_secs(60), Duration::from_secs(60));
+        let mut config = any_certificate_config().unwrap();
+        config.alpn_protocols.push(CHALLENGE_ALPN.to_vec());
+        let (protocol, closed) =
+            tokio::task::spawn_blocking(move || silent_after_handshake(config, port))
+                .await
+                .unwrap();
+        assert_eq!(protocol.as_deref(), Some(CHALLENGE_ALPN));
+        assert!(closed);
+    }
+
+    #[tokio::test]
+    async fn the_acceptor_answers_a_request_and_sets_nodelay() {
+        let port = serve_tls_on_a_port(HANDSHAKE_DEADLINE, crate::FIRST_REQUEST_DEADLINE);
+        assert!(
+            tokio::task::spawn_blocking(move || https_healthy(port, "relay.test"))
+                .await
+                .unwrap()
+        );
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let client = tokio::task::spawn_blocking(move || https_healthy(port, "relay.test"));
+        let (socket, _) = listener.accept().await.unwrap();
+        let (tls, ()) = acceptor(HANDSHAKE_DEADLINE)
+            .accept(socket, ())
+            .await
+            .unwrap();
+        assert!(tls.get_ref().get_ref().0.get_ref().nodelay().unwrap());
+        drop(tls);
+        let _ = client.await;
     }
 
     fn self_signed() -> rustls::ServerConfig {

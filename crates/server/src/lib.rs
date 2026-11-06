@@ -4,14 +4,75 @@ pub mod routing;
 pub mod tls;
 pub mod transport;
 
+use std::io;
+use std::net::{SocketAddr, TcpListener};
+use std::time::Duration;
+
+use axum::http::{header, HeaderValue};
+use axum::middleware::map_response;
+use axum::response::Response;
 use axum::{extract::State, http::StatusCode, routing::get, Router};
 use relay_wire::EULA_VERSION;
 
+use crate::tls::TlsAcceptor;
 use crate::transport::{ws_handler, AppState};
+
+/// What a connection gets to send its request once accepted.
+pub const FIRST_REQUEST_DEADLINE: Duration = Duration::from_secs(10);
 
 /// Whether `VRC_WE_ACCEPT_EULA` names the EULA version this release requires.
 pub fn eula_accepted(value: Option<&str>) -> bool {
     value.is_some_and(|v| v.trim() == EULA_VERSION)
+}
+
+/// A server whose connection is closed `first_request` after it is accepted if
+/// no request came. HTTP/2 gets no streams, so it never has one: hyper can't
+/// close an HTTP/2 connection that idles between requests. With
+/// [`close_unless_upgraded`], this is what bounds a connection before `/ws`,
+/// where the rate limit and the idle deadline start.
+fn one_request_server(
+    listener: TcpListener,
+    first_request: Duration,
+) -> io::Result<axum_server::Server<SocketAddr>> {
+    let mut server = axum_server::from_tcp(listener)?.first_request_timeout(first_request);
+    server.http_builder().http2().max_concurrent_streams(0);
+    Ok(server)
+}
+
+/// Ends a connection with its first answer unless that answer upgrades it, so
+/// nothing idles between requests. Hyper's own `keep_alive(false)` would also
+/// overwrite an upgrade's `Connection` header.
+async fn close_unless_upgraded(mut response: Response) -> Response {
+    if response.status() != StatusCode::SWITCHING_PROTOCOLS {
+        response
+            .headers_mut()
+            .insert(header::CONNECTION, HeaderValue::from_static("close"));
+    }
+    response
+}
+
+/// Serves `app` in plain HTTP, for a TLS-terminating proxy in front.
+pub async fn serve_plain(
+    listener: TcpListener,
+    app: Router,
+    first_request: Duration,
+) -> io::Result<()> {
+    one_request_server(listener, first_request)?
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+}
+
+/// Serves `app` over TLS through `acceptor`.
+pub async fn serve_tls(
+    listener: TcpListener,
+    acceptor: TlsAcceptor,
+    app: Router,
+    first_request: Duration,
+) -> io::Result<()> {
+    one_request_server(listener, first_request)?
+        .acceptor(acceptor)
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
 }
 
 pub fn build_router(state: AppState) -> Router {
@@ -21,6 +82,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/ws", get(ws_handler))
         .route("/pair", get(bridge::pair_page))
         .with_state(state)
+        .layer(map_response(close_unless_upgraded))
 }
 
 /// What this build is, answered where a person or a monitor looks.

@@ -108,6 +108,7 @@ Leave the TLS variables empty. The relay serves plain HTTP on port 8443, and the
 The proxy must:
 
 - forward WebSocket upgrades on `/ws` and keep idle connections open for at least 60 s;
+- speak HTTP/1.1 to the relay, which answers one request per connection and serves no HTTP/2;
 - append the address that connected to it to `X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
 
 Set `VRC_WE_RELAY_TRUSTED_PROXIES` to the proxy's address, and to [your CDN's ranges](https://www.cloudflare.com/ips/) if one sits in front.
