@@ -38,7 +38,7 @@ services:
     ports:
       - "443:8443"
     environment:
-      VRC_WE_ACCEPT_EULA: "2026-10"            # the EULA version you accept
+      VRC_WE_ACCEPT_EULA: "2026-11"            # the EULA version you accept
       VRC_WE_TLS_DOMAINS: "relay.example.com"  # a DNS name pointing at this host
       VRC_WE_TLS_EMAIL: "you@example.com"      # the Let's Encrypt account contact
     volumes:
@@ -68,7 +68,7 @@ The repository's [`compose.yml`](compose.yml) is the same file with every settin
 ```bash
 docker run -d --name vrc-we-server --restart unless-stopped \
   -p 443:8443 \
-  -e VRC_WE_ACCEPT_EULA=2026-10 \
+  -e VRC_WE_ACCEPT_EULA=2026-11 \
   -e VRC_WE_TLS_DOMAINS=relay.example.com \
   -e VRC_WE_TLS_EMAIL=you@example.com \
   -v vrc-we-acme:/var/lib/vrc-we/acme \
@@ -120,7 +120,7 @@ Nginx Proxy Manager trusts `X-Real-IP` from CDN and private ranges by default; a
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VRC_WE_ACCEPT_EULA` | unset (required) | The [EULA](EULA.md) version you accept, e.g. `2026-10`. The relay refuses to start unless it names the version the release requires. |
+| `VRC_WE_ACCEPT_EULA` | unset (required) | The [EULA](EULA.md) version you accept, e.g. `2026-11`. The relay refuses to start unless it names the version the release requires. |
 | `VRC_WE_BIND` | `0.0.0.0:8443` (image) / `127.0.0.1:8443` (plain, outside the image) / `0.0.0.0:443` (TLS, outside the image) | Listen address. |
 | `VRC_WE_TLS_DOMAINS` | unset | Comma-separated domains to obtain certificates for. Set, it enables in-process TLS. |
 | `VRC_WE_TLS_EMAIL` | unset (required with TLS) | Let's Encrypt account contact. |
@@ -160,7 +160,7 @@ Both sides report the same values where a person or a monitor can read them:
 ```bash
 curl -s https://relay.example.com/health
 # {"status":"pass","serviceId":"vrc-we-server","version":"2026.1",
-#  "wire":2,"minClient":2,"minRelay":2,"eula":"2026-10"}
+#  "wire":2,"minClient":2,"minRelay":2,"eula":"2026-11"}
 curl -s https://relay.example.com/.well-known/vrc-we   # the same build, without health
 ```
 
@@ -172,7 +172,7 @@ Raising `WIRE_VERSION` is the one change that needs a release note of its own. R
 
 ```bash
 cargo test --workspace
-VRC_WE_ACCEPT_EULA=2026-10 cargo run -p server   # plain HTTP on 127.0.0.1:8443
+VRC_WE_ACCEPT_EULA=2026-11 cargo run -p server   # plain HTTP on 127.0.0.1:8443
 docker build -t vrc-we-server:local .            # needs BuildKit (docker buildx)
 ```
 

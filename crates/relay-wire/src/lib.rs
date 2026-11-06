@@ -96,7 +96,7 @@ pub const MAX_PAYLOAD_BYTES: usize = 65_535;
 /// The EULA version this release requires. The client records the version
 /// its user accepted; the relay starts only when `VRC_WE_ACCEPT_EULA` names
 /// this one.
-pub const EULA_VERSION: &str = "2026-10";
+pub const EULA_VERSION: &str = "2026-11";
 /// The text of EULA version `EULA_VERSION`, shown by the client.
 pub const EULA: &str = include_str!("../../../EULA.md");
 

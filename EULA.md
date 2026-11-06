@@ -1,6 +1,6 @@
 # vrc-WiredExpressions End User License Agreement
 
-**Version 2026-10**
+**Version 2026-11**
 
 This agreement ("EULA") is between you and **oblivius** ("Licensor", "we", "us"). It covers:
 
@@ -8,7 +8,7 @@ This agreement ("EULA") is between you and **oblivius** ("Licensor", "we", "us")
 - the **Relay Software**: the vrc-we-server relay, as source code and as the Docker image `99oblivius/vrc-we-server`;
 - the **Official Relay**: the instance of the Relay Software that we run at `vrcwe.oblivius.dev`.
 
-**Acceptance.** You accept this EULA by choosing *Accept* when the Client asks, or by setting `VRC_WE_ACCEPT_EULA=2026-10` when you run the Relay Software. If you do not agree, do not use them.
+**Acceptance.** You accept this EULA by choosing *Accept* when the Client asks, or by setting `VRC_WE_ACCEPT_EULA=2026-11` when you run the Relay Software. If you do not agree, do not use them.
 
 **This EULA contains a disclaimer of warranties (section 7) and a limitation of our liability (section 8).**
 
@@ -49,11 +49,15 @@ When you use the Client, the Relay Software or the Official Relay, you will not:
 
 Extensions are separate software that the Client can load. They are not part of the Client, and the Client's licence does not cover them.
 
-An extension written by us is a product we manufacture, provided under the terms its own listing names. An extension written by someone else is that author's product: the author and source named in the listing identify its manufacturer, and we distribute a reference to it, not the software itself. We do not review it, we do not endorse it, and we may stop listing it at any time.
+An extension written by us is a product we manufacture, provided under its own licence and any terms it declares. An extension written by someone else is that author's product: the author and source named in the listing identify its manufacturer, and we distribute a reference to it, not the software itself.
+
+**What listing means.** In a repository we maintain, we read an extension against that repository's listing policy before listing it. That check covers what the policy names and nothing more: it is not a review of whether the extension is safe, secure, lawful where you are or fit for any purpose, and it is not an endorsement. We may stop listing an extension at any time. An extension from a repository or a file you add yourself gets no check from us at all.
 
 **What an extension declares.** An extension may declare what it can do beyond what its permissions already show — for example that it drives hardware on your network, or that it needs an account with a third-party service. Those declarations are the author's and are printed as the author wrote them. The Client shows an extension's declarations with its details before you install it. We do not verify a declaration, and a declaration is not our statement that an extension is safe, lawful where you are, or fit for any purpose.
 
-**Terms.** Each extension is provided under its author's terms. The Client shows those terms with the permissions it asks for, and asks you to accept both before it installs. Those terms are between you and the author. We are not a party to them and we do not enforce them. When they change, you are asked again before an update.
+**Terms.** An extension may declare terms, its author's or those of a service it connects to. Where it does, the Client shows them with the permissions it asks for, asks you to accept both before it installs, and keeps them readable in its details. Those terms are between you and whoever set them. We are not a party to them and we do not enforce them. You are asked again before an update that declares different ones: another text, another address or another declared hash. The Client does not fetch or watch terms published at an address, so whoever publishes them can change them without the extension changing, and reading them there is yours to do.
+
+**Licences.** An extension's licence is its own and shows in its details. The notices for what it is built from are published with its release.
 
 **Who provides it.** Where you have a claim about an extension, it lies against the author named in its listing — which is us where we wrote it. We will identify that author on request where the law requires us to.
 
