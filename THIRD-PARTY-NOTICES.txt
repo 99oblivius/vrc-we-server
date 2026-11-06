@@ -6,17 +6,17 @@ following third-party crates, each under the license reproduced below.
 
 Overview
 --------
-MIT License: 165
+MIT License: 161
 ISC License: 4
 Apache License 2.0: 3
 BSD 3-Clause "New" or "Revised" License: 3
-Community Data License Agreement Permissive 2.0: 2
+Community Data License Agreement Permissive 2.0: 1
 Unicode License v3: 1
 
 ================================================================================
 Apache License 2.0
 Used by:
-  aws-lc-sys 0.45.0 (https://github.com/aws/aws-lc-rs)
+  aws-lc-sys 0.47.0 (https://github.com/aws/aws-lc-rs)
   ryu 1.0.23 (https://github.com/dtolnay/ryu)
   sync_wrapper 1.0.2 (https://github.com/Actyx/sync_wrapper)
 
@@ -170,7 +170,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ================================================================================
 BSD 3-Clause "New" or "Revised" License
 Used by:
-  aws-lc-sys 0.45.0 (https://github.com/aws/aws-lc-rs)
+  aws-lc-sys 0.47.0 (https://github.com/aws/aws-lc-rs)
 
 Copyright (c) <year> <owner>. 
 
@@ -188,7 +188,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 ================================================================================
 Community Data License Agreement Permissive 2.0
 Used by:
-  webpki-roots 0.26.11 (https://github.com/rustls/webpki-roots)
   webpki-roots 1.0.11 (https://github.com/rustls/webpki-roots)
 
 # Community Data License Agreement - Permissive - Version 2.0
@@ -303,8 +302,8 @@ third-party/chromium/LICENSE.
 ================================================================================
 ISC License
 Used by:
-  aws-lc-rs 1.18.1 (https://github.com/aws/aws-lc-rs)
-  aws-lc-sys 0.45.0 (https://github.com/aws/aws-lc-rs)
+  aws-lc-rs 1.19.0 (https://github.com/aws/aws-lc-rs)
+  aws-lc-sys 0.47.0 (https://github.com/aws/aws-lc-rs)
 
 ISC License:
 
@@ -372,43 +371,11 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  sha1 0.10.6 (https://github.com/RustCrypto/hashes)
+  sha1 0.10.7 (https://github.com/RustCrypto/hashes)
 
 Copyright (c) 2006-2009 Graydon Hoare
 Copyright (c) 2009-2013 Mozilla Foundation
 Copyright (c) 2016 Artyom Pavlov
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
-================================================================================
-MIT License
-Used by:
-  lazy_static 1.5.0 (https://github.com/rust-lang-nursery/lazy-static.rs)
-
-Copyright (c) 2010 The Rust Project Developers
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -502,8 +469,8 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  cfg-if 1.0.4 (https://github.com/rust-lang/cfg-if)
-  socket2 0.6.3 (https://github.com/rust-lang/socket2)
+  cfg-if 1.0.5 (https://github.com/rust-lang/cfg-if)
+  socket2 0.6.5 (https://github.com/rust-lang/socket2)
 
 Copyright (c) 2014 Alex Crichton
 
@@ -535,7 +502,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  mio 1.2.0 (https://github.com/tokio-rs/mio)
+  mio 1.2.4 (https://github.com/tokio-rs/mio)
 
 Copyright (c) 2014 Carl Lerche and other MIO contributors
 
@@ -593,7 +560,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  mime 0.3.17 (https://github.com/hyperium/mime)
+  mime 0.3.18 (https://github.com/hyperium/mime)
 
 Copyright (c) 2014 Sean McArthur
 
@@ -620,13 +587,13 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  bitflags 2.11.1 (https://github.com/bitflags/bitflags)
-  log 0.4.29 (https://github.com/rust-lang/log)
-  num-bigint 0.4.6 (https://github.com/rust-num/num-bigint)
-  num-integer 0.1.46 (https://github.com/rust-num/num-integer)
+  bitflags 2.13.2 (https://github.com/bitflags/bitflags)
+  log 0.4.35 (https://github.com/rust-lang/log)
+  num-bigint 0.4.8 (https://github.com/rust-num/num-bigint)
+  num-integer 0.1.47 (https://github.com/rust-num/num-integer)
   num-traits 0.2.19 (https://github.com/rust-num/num-traits)
-  regex-automata 0.4.14 (https://github.com/rust-lang/regex)
-  regex-syntax 0.8.10 (https://github.com/rust-lang/regex)
+  regex-automata 0.4.18 (https://github.com/rust-lang/regex)
+  regex-syntax 0.8.11 (https://github.com/rust-lang/regex)
 
 Copyright (c) 2014 The Rust Project Developers
 
@@ -685,7 +652,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  hyper 1.9.0 (https://github.com/hyperium/hyper)
+  hyper 1.12.0 (https://github.com/hyperium/hyper)
 
 Copyright (c) 2014-2026 Sean McArthur
 
@@ -711,7 +678,7 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  either 1.15.0 (https://github.com/rayon-rs/either)
+  either 1.19.0 (https://github.com/rayon-rs/either)
 
 Copyright (c) 2015
 
@@ -770,15 +737,15 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  futures-channel 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-core 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-executor 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-io 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-macro 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-sink 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-task 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures-util 0.3.32 (https://github.com/rust-lang/futures-rs)
-  futures 0.3.32 (https://github.com/rust-lang/futures-rs)
+  futures-channel 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-core 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-executor 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-io 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-macro 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-sink 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-task 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures-util 0.3.34 (https://github.com/rust-lang/futures-rs)
+  futures 0.3.34 (https://github.com/rust-lang/futures-rs)
 
 Copyright (c) 2016 Alex Crichton
 Copyright (c) 2017 The Tokio Authors
@@ -934,9 +901,12 @@ THE SOFTWARE.
 MIT License
 Used by:
   lock_api 0.4.14 (https://github.com/Amanieu/parking_lot)
+  lock_api 0.5.0 (https://github.com/Amanieu/parking_lot)
   parking_lot 0.12.5 (https://github.com/Amanieu/parking_lot)
+  parking_lot 0.13.0 (https://github.com/Amanieu/parking_lot)
+  parking_lot_core 0.10.0 (https://github.com/Amanieu/parking_lot)
   parking_lot_core 0.9.12 (https://github.com/Amanieu/parking_lot)
-  thread_local 1.1.9 (https://github.com/Amanieu/thread_local-rs)
+  thread_local 1.1.10 (https://github.com/Amanieu/thread_local-rs)
 
 Copyright (c) 2016 The Rust Project Developers
 
@@ -968,7 +938,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  indexmap 2.14.0 (https://github.com/indexmap-rs/indexmap)
+  indexmap 2.14.2 (https://github.com/indexmap-rs/indexmap)
 
 Copyright (c) 2016--2017
 
@@ -1000,7 +970,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  equivalent 1.0.2 (https://github.com/indexmap-rs/equivalent)
+  equivalent 1.0.3 (https://github.com/indexmap-rs/equivalent)
 
 Copyright (c) 2016--2023
 
@@ -1182,16 +1152,11 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  asn1-rs-derive 0.5.1 (https://github.com/rusticata/asn1-rs.git)
   asn1-rs-derive 0.6.0 (https://github.com/rusticata/asn1-rs.git)
-  asn1-rs 0.6.2 (https://github.com/rusticata/asn1-rs.git)
   asn1-rs 0.7.2 (https://github.com/rusticata/asn1-rs.git)
   der-parser 10.0.0 (https://github.com/rusticata/der-parser.git)
-  der-parser 9.0.0 (https://github.com/rusticata/der-parser.git)
-  oid-registry 0.7.1 (https://github.com/rusticata/oid-registry.git)
   oid-registry 0.8.1 (https://github.com/rusticata/oid-registry.git)
   rusticata-macros 4.1.0 (https://github.com/rusticata/rusticata-macros.git)
-  x509-parser 0.16.0 (https://github.com/rusticata/x509-parser.git)
   x509-parser 0.18.1 (https://github.com/rusticata/x509-parser.git)
 
 Copyright (c) 2017 Pierre Chifflier
@@ -1224,7 +1189,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  arc-swap 1.9.1 (https://github.com/vorner/arc-swap)
+  arc-swap 1.9.3 (https://github.com/vorner/arc-swap)
 
 Copyright (c) 2017 arc-swap developers
 
@@ -1288,7 +1253,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  http 1.4.0 (https://github.com/hyperium/http)
+  http 1.5.0 (https://github.com/hyperium/http)
 
 Copyright (c) 2017 http-rs authors
 
@@ -1320,7 +1285,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  tokio-rustls 0.26.4 (https://github.com/rustls/tokio-rustls)
+  tokio-rustls 0.26.6 (https://github.com/rustls/tokio-rustls)
 
 Copyright (c) 2017 quininer kel
 
@@ -1384,7 +1349,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  bytes 1.11.1 (https://github.com/tokio-rs/bytes)
+  bytes 1.12.1 (https://github.com/tokio-rs/bytes)
 
 Copyright (c) 2018 Carl Lerche
 
@@ -1416,7 +1381,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  smallvec 1.15.1 (https://github.com/servo/rust-smallvec)
+  smallvec 1.16.5 (https://github.com/servo/rust-smallvec)
 
 Copyright (c) 2018 The Servo Project Developers
 
@@ -1484,6 +1449,38 @@ Used by:
 
 Copyright (c) 2018-2025 The rust-random Project Developers
 Copyright (c) 2014 The Rust Project Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+MIT License
+Used by:
+  zeroize 1.9.1 (https://github.com/RustCrypto/utils)
+
+Copyright (c) 2018-2026 The RustCrypto Project Developers
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -1731,41 +1728,10 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  http-body 1.0.1 (https://github.com/hyperium/http-body)
+  http-body-util 0.1.5 (https://github.com/hyperium/http-body)
+  http-body 1.1.0 (https://github.com/hyperium/http-body)
 
-Copyright (c) 2019-2024 Sean McArthur & Hyper Contributors
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-
-================================================================================
-MIT License
-Used by:
-  http-body-util 0.1.3 (https://github.com/hyperium/http-body)
-
-Copyright (c) 2019-2025 Sean McArthur & Hyper Contributors
+Copyright (c) 2019-2026 Sean McArthur & Hyper Contributors
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -1923,7 +1889,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  rustls-pki-types 1.14.1 (https://github.com/rustls/pki-types)
+  rustls-pki-types 1.15.1 (https://github.com/rustls/pki-types)
 
 Copyright (c) 2023 Dirkjan Ochtman <dirkjan@ochtman.nl>
 
@@ -1955,7 +1921,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  powerfmt 0.2.0 (https://github.com/jhpratt/powerfmt)
+  powerfmt 0.2.1 (https://github.com/jhpratt/powerfmt)
 
 Copyright (c) 2023 Jacob Pratt et al.
 
@@ -1981,7 +1947,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  hyper-util 0.1.20 (https://github.com/hyperium/hyper-util)
+  hyper-util 0.1.21 (https://github.com/hyperium/hyper-util)
 
 Copyright (c) 2023-2025 Sean McArthur
 
@@ -2007,7 +1973,7 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  deranged 0.5.8 (https://github.com/jhpratt/deranged)
+  deranged 0.5.9 (https://github.com/jhpratt/deranged)
 
 Copyright (c) 2024 Jacob Pratt et al.
 
@@ -2033,7 +1999,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  num-conv 0.2.1 (https://github.com/jhpratt/num-conv)
+  num-conv 0.2.2 (https://github.com/jhpratt/num-conv)
 
 Copyright (c) Jacob Pratt
 
@@ -2059,9 +2025,9 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  time-core 0.1.8 (https://github.com/time-rs/time)
-  time-macros 0.2.27 (https://github.com/time-rs/time)
-  time 0.3.47 (https://github.com/time-rs/time)
+  time-core 0.1.9 (https://github.com/time-rs/time)
+  time-macros 0.2.32 (https://github.com/time-rs/time)
+  time 0.3.55 (https://github.com/time-rs/time)
 
 Copyright (c) Jacob Pratt et al.
 
@@ -2087,7 +2053,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  libc 0.2.186 (https://github.com/rust-lang/libc)
+  libc 0.2.191 (https://github.com/rust-lang/libc)
 
 Copyright (c) The Rust Project Developers
 
@@ -2133,7 +2099,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ================================================================================
 MIT License
 Used by:
-  ipnet 2.12.0 (https://github.com/krisprice/ipnet)
+  ipnet 2.12.2 (https://github.com/krisprice/ipnet)
 
 Copyright 2017 Juniper Networks, Inc.
 
@@ -2147,7 +2113,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ================================================================================
 MIT License
 Used by:
-  rand 0.9.4 (https://github.com/rust-random/rand)
+  rand 0.9.5 (https://github.com/rust-random/rand)
   rand_chacha 0.9.0 (https://github.com/rust-random/rand)
   rand_core 0.9.5 (https://github.com/rust-random/rand)
 
@@ -2208,7 +2174,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  zerocopy 0.8.48 (https://github.com/google/zerocopy)
+  zerocopy 0.8.63 (https://github.com/google/zerocopy)
 
 Copyright 2023 The Fuchsia Authors
 
@@ -2241,35 +2207,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  zeroize 1.8.2 (https://github.com/RustCrypto/utils)
-
-MIT License
-
-Copyright (c) 2018-2021 The RustCrypto Project Developers
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-================================================================================
-MIT License
-Used by:
-  tokio-macros 2.7.0 (https://github.com/tokio-rs/tokio)
+  tokio-macros 2.7.2 (https://github.com/tokio-rs/tokio)
 
 MIT License
 
@@ -2361,8 +2299,8 @@ MIT License
 Used by:
   asn1-rs-impl 0.2.0 (https://github.com/rusticata/asn1-rs.git)
   async-http-codec 0.8.0
-  async-web-client 0.6.2 (https://github.com/FlorianUekermann/async-web-client)
-  chrono 0.4.44 (https://github.com/chronotope/chrono)
+  async-web-client 0.6.4 (https://github.com/FlorianUekermann/async-web-client)
+  chrono 0.4.45 (https://github.com/chronotope/chrono)
   rcgen 0.13.2 (https://github.com/rustls/rcgen)
   yasna 0.5.2 (https://github.com/qnighy/yasna.rs)
 
@@ -2389,7 +2327,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  tokio-util 0.7.18 (https://github.com/tokio-rs/tokio)
+  tokio-util 0.7.20 (https://github.com/tokio-rs/tokio)
   tokio 1.54.1 (https://github.com/tokio-rs/tokio)
 
 MIT License
@@ -2418,21 +2356,22 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  anyhow 1.0.102 (https://github.com/dtolnay/anyhow)
+  anyhow 1.0.104 (https://github.com/dtolnay/anyhow)
   async-channel 2.5.0 (https://github.com/smol-rs/async-channel)
   async-io 2.6.0 (https://github.com/smol-rs/async-io)
   async-net 2.0.0 (https://github.com/smol-rs/async-net)
   async-task 4.7.1 (https://github.com/smol-rs/async-task)
   async-trait 0.1.92 (https://github.com/dtolnay/async-trait)
   atomic-waker 1.1.2 (https://github.com/smol-rs/atomic-waker)
-  blocking 1.6.2 (https://github.com/smol-rs/blocking)
+  blocking 1.7.0 (https://github.com/smol-rs/blocking)
   concurrent-queue 2.5.0 (https://github.com/smol-rs/concurrent-queue)
-  displaydoc 0.2.5 (https://github.com/yaahc/displaydoc)
+  displaydoc 0.2.7 (https://github.com/yaahc/displaydoc)
   event-listener-strategy 0.5.4 (https://github.com/smol-rs/event-listener-strategy)
-  event-listener 5.4.1 (https://github.com/smol-rs/event-listener)
-  fastrand 2.4.1 (https://github.com/smol-rs/fastrand)
+  event-listener 5.4.2 (https://github.com/smol-rs/event-listener)
+  fastrand 2.5.0 (https://github.com/smol-rs/fastrand)
   futures-lite 2.6.1 (https://github.com/smol-rs/futures-lite)
   itoa 1.0.18 (https://github.com/dtolnay/itoa)
+  lazy_static 1.5.1 (https://github.com/rust-lang-nursery/lazy-static.rs)
   linux-raw-sys 0.12.1 (https://github.com/sunfishcode/linux-raw-sys)
   minimal-lexical 0.2.1 (https://github.com/Alexhuszagh/minimal-lexical)
   once_cell 1.21.4 (https://github.com/matklad/once_cell)
@@ -2440,25 +2379,23 @@ Used by:
   pin-project-lite 0.2.17 (https://github.com/taiki-e/pin-project-lite)
   piper 0.2.5 (https://github.com/smol-rs/piper)
   polling 3.11.0 (https://github.com/smol-rs/polling)
-  proc-macro2 1.0.106 (https://github.com/dtolnay/proc-macro2)
-  quote 1.0.45 (https://github.com/dtolnay/quote)
-  rustix 1.1.4 (https://github.com/bytecodealliance/rustix)
-  rustls-acme 0.15.1 (https://github.com/FlorianUekermann/rustls-acme)
-  rustversion 1.0.22 (https://github.com/dtolnay/rustversion)
-  serde 1.0.228 (https://github.com/serde-rs/serde)
+  proc-macro2 1.0.107 (https://github.com/dtolnay/proc-macro2)
+  quote 1.0.47 (https://github.com/dtolnay/quote)
+  rustix 1.1.6 (https://github.com/bytecodealliance/rustix)
+  rustls-acme 0.15.4 (https://github.com/FlorianUekermann/rustls-acme)
+  rustversion 1.0.23 (https://github.com/dtolnay/rustversion)
+  serde 1.0.229 (https://github.com/serde-rs/serde)
   serde_bytes 0.11.19 (https://github.com/serde-rs/bytes)
-  serde_core 1.0.228 (https://github.com/serde-rs/serde)
-  serde_derive 1.0.228 (https://github.com/serde-rs/serde)
-  serde_json 1.0.149 (https://github.com/serde-rs/json)
+  serde_core 1.0.229 (https://github.com/serde-rs/serde)
+  serde_derive 1.0.229 (https://github.com/serde-rs/serde)
+  serde_json 1.0.154 (https://github.com/serde-rs/json)
   serde_path_to_error 0.1.20 (https://github.com/dtolnay/path-to-error)
-  syn 2.0.117 (https://github.com/dtolnay/syn)
+  syn 2.0.119 (https://github.com/dtolnay/syn)
   syn 3.0.9 (https://github.com/dtolnay/syn)
-  thiserror-impl 1.0.69 (https://github.com/dtolnay/thiserror)
-  thiserror-impl 2.0.18 (https://github.com/dtolnay/thiserror)
-  thiserror 1.0.69 (https://github.com/dtolnay/thiserror)
-  thiserror 2.0.18 (https://github.com/dtolnay/thiserror)
-  unicode-ident 1.0.24 (https://github.com/dtolnay/unicode-ident)
-  zmij 1.0.21 (https://github.com/dtolnay/zmij)
+  thiserror-impl 2.0.21 (https://github.com/dtolnay/thiserror)
+  thiserror 2.0.21 (https://github.com/dtolnay/thiserror)
+  unicode-ident 1.0.27 (https://github.com/dtolnay/unicode-ident)
+  zmij 1.0.23 (https://github.com/dtolnay/zmij)
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -2488,7 +2425,7 @@ DEALINGS IN THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  fs-err 3.3.0 (https://github.com/andrewhickman/fs-err)
+  fs-err 3.3.2 (https://github.com/andrewhickman/fs-err)
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -2546,7 +2483,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  typenum 1.20.0 (https://github.com/paholg/typenum)
+  typenum 1.20.1 (https://github.com/paholg/typenum)
 
 The MIT License (MIT)
 
@@ -2602,7 +2539,7 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  memchr 2.8.0 (https://github.com/BurntSushi/memchr)
+  memchr 2.8.3 (https://github.com/BurntSushi/memchr)
 
 The MIT License (MIT)
 
@@ -2630,7 +2567,7 @@ THE SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  data-encoding 2.11.0 (https://github.com/ia0/data-encoding)
+  data-encoding 2.11.1 (https://github.com/ia0/data-encoding)
 
 The MIT License (MIT)
 
@@ -2659,7 +2596,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  aws-lc-sys 0.45.0 (https://github.com/aws/aws-lc-rs)
+  aws-lc-sys 0.47.0 (https://github.com/aws/aws-lc-rs)
 
 The MIT License (MIT)
 
@@ -2716,7 +2653,7 @@ SOFTWARE.
 ================================================================================
 MIT License
 Used by:
-  crossbeam-utils 0.8.21 (https://github.com/crossbeam-rs/crossbeam)
+  crossbeam-utils 0.8.23 (https://github.com/crossbeam-rs/crossbeam)
 
 The MIT License (MIT)
 
@@ -2806,7 +2743,7 @@ SOFTWARE.
 ================================================================================
 Unicode License v3
 Used by:
-  unicode-ident 1.0.24 (https://github.com/dtolnay/unicode-ident)
+  unicode-ident 1.0.27 (https://github.com/dtolnay/unicode-ident)
 
 UNICODE LICENSE V3
 
